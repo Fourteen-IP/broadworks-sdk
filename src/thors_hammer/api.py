@@ -12,7 +12,7 @@ VERBOSE_DEBUG = 9
 
 
 @attr.s(slots=True, kw_only=True)
-class BroadworksSOAP:
+class API:
     """BroadworksSOAP - Wrapper class of BroadworksAPI which changes connection to SOAP API.
 
     Attributes:
@@ -76,7 +76,26 @@ class BroadworksSOAP:
             self.logger.error("Failed to initialise SOAP client.", exc_info=True)
             raise e
 
-    def command(self, command, **kwargs) -> broadworks_ocip.base.OCICommand:
+    def command(self, command_instance) -> broadworks_ocip.base.OCICommand:
+        """
+        Send a command to the OCI-P server using a command class instance.
+
+        Args:
+            command_instance (object): An instance of a command class with a `command` and `params` attribute.
+        """
+
+        if not hasattr(command_instance, "command") or not hasattr(
+            command_instance, "params"
+        ):
+            raise ValueError(
+                "Command instance must have `command` and `params` attributes."
+            )
+
+        return self.api.send_raw_command(
+            command_instance.command, **command_instance.params
+        )
+
+    def send_raw_command(self, command, **kwargs) -> broadworks_ocip.base.OCICommand:
         """
         Send a command to the server via SOAP and decode response.
 
@@ -109,14 +128,16 @@ class BroadworksSOAP:
         Authenticate the connection to the OCI-P server.
         """
 
-        auth_resp = self.command("AuthenticationRequest", user_id=self.username)
+        auth_resp = self.send_raw_command(
+            "AuthenticationRequest", user_id=self.username
+        )
         authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
         signed_password = (
             hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
             .hexdigest()
             .lower()
         )
-        login_resp = self.command(
+        login_resp = self.send_raw_command(
             "LoginRequest14sp4", user_id=self.username, signed_password=signed_password
         )
         self.authenticated = True
