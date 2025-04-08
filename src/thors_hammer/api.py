@@ -1,58 +1,89 @@
+import logging
+import hashlib
+
+import attr
+import requests
+from zeep import Client, Settings
+from zeep.transports import Transport
 from broadworks_ocip import BroadworksAPI
+import broadworks_ocip.types
+
+VERBOSE_DEBUG = 9
 
 
+@attr.s(slots=True, kw_only=True)
 class API:
-    """
-    Wrapper around BroadworksAPI to enhance usability and provide additional features.
+    """BroadworksSOAP - Wrapper class of BroadworksAPI which changes connection to SOAP API.
+
+    Attributes:
+        url (str): URL of the SOAP API. Do not inclue '?wsdl' at the end
+        username (str): Username to authenticate with
+        password (str): Password to authenticate with
+        user_agent (str, optional): Header in HTTP request. Can be used to identify where calls are coming from.
+
+    Raises:
+        Raises exception if auth or setting up soap connection fails.
     """
 
-    def __init__(self, host, username, password, port=2208, logger=None, **kwargs):
-        """
-        Initialize the wrapper with the required connection details.
+    url: str = attr.ib()
+    username: str = attr.ib()
+    password: str = attr.ib()
+    user_agent: str = attr.ib(
+        default="Thor's Hammer (`https://pypi.org/project/thorz-hammer/`)"
+    )
 
-        Args:
-            host (str): The hostname or IP address of the OCI-P server.
-            username (str): The username to authenticate with.
-            password (str): The password to authenticate with.
-            port (int, optional): The port to connect to. Defaults to 2208.
-            logger (Logger, optional): A custom logger instance.
-            **kwargs: Additional parameters to pass to the BroadworksAPI.
-        """
-        self.api = BroadworksAPI(
-            host=host,
-            username=username,
-            password=password,
-            port=port,
-            logger=logger,
-            **kwargs,
+    ocip = attr.ib(default=None)
+
+    soap_client: Client = attr.ib(default=None)
+    session_id: str = attr.ib(default=None)
+    timeout: int = attr.ib(default=10)
+
+    logger: logging.Logger = attr.ib(default=None)
+    authenticated: bool = attr.ib(default=False)
+
+    def __attrs_post_init__(self) -> None:
+        # wrap around this object
+        self.ocip = BroadworksAPI(
+            host="REQUIRED ARGUMENT",
+            username=self.username,
+            password=self.password,
+            logger=self.logger if self.logger else None,
         )
-        self.api.configure_logger()
 
-    def authenticate(self):
-        """
-        Authenticate with the OCI-P server.
+        self.session_id = self.ocip.session_id
+        self.logger = self.ocip.logger
+        self.authenticated = False
 
-        Returns:
-            Response: The response object from the server.
-        """
-        return self.api.authenticate()
+        self.setup_soap_client()
+        self.authenticate()
 
-    def close(self):
+    def setup_soap_client(self) -> None:
         """
-        Close the connection to the OCI-P server.
+        Set up the SOAP client using requests and zeep.
         """
-        self.api.close()
+        session = requests.Session()
+        session.auth = (self.username, self.password)
+        session.verify = True
+        transport = Transport(session=session, timeout=self.timeout)
+        transport.session.headers["User-Agent"] = self.user_agent
+        settings = Settings(strict=False, xml_huge_tree=True)
+        try:
+            self.soap_client = Client(
+                wsdl=self.url + "?wsdl", transport=transport, settings=settings
+            )
+            self.logger.info("SOAP client initialised successfully.")
+        except Exception as e:
+            self.logger.error("Failed to initialise SOAP client.", exc_info=True)
+            raise e
 
-    def command(self, command_instance):
+    def command(self, command_instance) -> broadworks_ocip.base.OCICommand:
         """
         Send a command to the OCI-P server using a command class instance.
 
         Args:
             command_instance (object): An instance of a command class with a `command` and `params` attribute.
-
-        Returns:
-            Response: The response object from the server.
         """
+
         if not hasattr(command_instance, "command") or not hasattr(
             command_instance, "params"
         ):
@@ -60,79 +91,54 @@ class API:
                 "Command instance must have `command` and `params` attributes."
             )
 
-        return self.api.command(command_instance.command, **command_instance.params)
+        return self.api.send_raw_command(
+            command_instance.command, **command_instance.params
+        )
 
-    def send_raw_command(self, command, **kwargs):
+    def send_raw_command(self, command, **kwargs) -> broadworks_ocip.base.OCICommand:
         """
-        Send a raw command directly to the OCI-P server.
+        Send a command to the server via SOAP and decode response.
 
-        Args:
-            command (str): The command name as a string.
-            **kwargs: The parameters for the command.
-
-        Returns:
-            Response: The response object from the server.
+        Utilises BroadworksAPI to achieve encoding and decoding.
         """
-        return self.api.command(command, **kwargs)
+        # Instead of managing a persistent socket connection and authentication,
+        # we assume that the SOAP client is already set up.
+        xml = self.ocip.get_command_xml(command, **kwargs)
+        self.logger.info(f">>> {command}")
+        self.logger.log(VERBOSE_DEBUG, f"SEND: {str(xml)}")
+        try:
+            # Call the SOAP method (assumed to be processOCIMessage) with the XML.
+            # Zeep typically expects a string, so we decode the bytes.
+            soap_response = self.soap_client.service.processOCIMessage(xml)
+            self.logger.log(VERBOSE_DEBUG, f"SOAP RESPONSE: {str(soap_response)}")
+        except Exception as e:
+            self.logger.error("SOAP service call failed", exc_info=True)
+            raise e
 
-    def build_command(self, command_name, **kwargs):
+        # Ensure the response is in bytes for decoding
+        if isinstance(soap_response, str):
+            response_bytes = soap_response.encode("ISO-8859-1")
+        else:
+            response_bytes = soap_response
+
+        return self.ocip.decode_xml(response_bytes)
+
+    def authenticate(self) -> broadworks_ocip.base.OCICommand:
         """
-        Dynamically build and send a command to the server.
-
-        Args:
-            command_name (str): The name of the command to execute.
-            **kwargs: Parameters for the command.
-
-        Returns:
-            Response: The response object from the server.
+        Authenticate the connection to the OCI-P server.
         """
-        return self.api.command(command_name, **kwargs)
 
-    def is_authenticated(self):
-        """
-        Check if the connection is authenticated.
-
-        Returns:
-            bool: True if authenticated, False otherwise.
-        """
-        return self.api.authenticated
-
-    def connect(self):
-        """
-        Open a connection to the OCI-P server.
-        """
-        self.api.connect()
-
-    def receive_response(self):
-        """
-        Receive and decode the response from the server.
-
-        Returns:
-            Response: The response object from the server.
-        """
-        return self.api.receive_response()
-
-    def decode_xml(self, xml):
-        """
-        Decode raw XML into a BroadWorks command object.
-
-        Args:
-            xml (str): The raw XML string.
-
-        Returns:
-            object: The OCICommand object.
-        """
-        return self.api.decode_xml(xml)
-
-    def send_command(self, command, **kwargs):
-        """
-        Build and send XML for a command and its parameters.
-
-        Args:
-            command (str): The command name.
-            **kwargs: The parameters for the command.
-
-        Returns:
-            None
-        """
-        self.api.send_command(command, **kwargs)
+        auth_resp = self.send_raw_command(
+            "AuthenticationRequest", user_id=self.username
+        )
+        authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
+        signed_password = (
+            hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
+            .hexdigest()
+            .lower()
+        )
+        login_resp = self.send_raw_command(
+            "LoginRequest14sp4", user_id=self.username, signed_password=signed_password
+        )
+        self.authenticated = True
+        return login_resp

@@ -1,11 +1,45 @@
+[build-system]
+requires = [
+    "setuptools",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "thors-hammer"
+name = "thorz-hammer"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.9, <3.13"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Jordan Prescott", email = "hello@minimalmind.io" }
+]
+classifiers=[
+    # Development Status
+    "Development Status :: 4 - Beta",
+    # Target Audience
+    "Intended Audience :: Developers",
+    # License
+    "License :: OSI Approved :: MIT License",
+    # Programming Languages
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.12",
+    # Operating Systems
+    "Operating System :: OS Independent",
+    
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Utilities",
+]
+keywords = ["broadworks", "oci", "soap", "telephony", "voip"]
+
 dependencies = [
     "broadworks-ocip>=2.2.0",
+    "requests>=2.32.3",
+    "zeep>=4.3.1",
 ]
 
 [dependency-groups]
