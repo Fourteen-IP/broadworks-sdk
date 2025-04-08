@@ -4,23 +4,23 @@ def main(api, service_provider_id: str, group_id: str, alias: int):
     # utilise threading
 
     # 1. Fetch BREs
-    group_aa_lst = api.raw_command(
-        "GroupAutoAttendantGetInstanceListRequest",
-        service_provider_id=service_provider_id,
-        group_id=group_id,
-    ).auto_attendant_table
+    # group_aa_lst = api.raw_command(
+    #     "GroupAutoAttendantGetInstanceListRequest",
+    #     service_provider_id=service_provider_id,
+    #     group_id=group_id,
+    # ).auto_attendant_table
 
-    group_hg_lst = api.raw_command(
-        "GroupHuntGroupGetInstanceListRequest",
-        service_provider_id=service_provider_id,
-        group_id=group_id,
-    ).hunt_group_table
+    # group_hg_lst = api.raw_command(
+    #     "GroupHuntGroupGetInstanceListRequest",
+    #     service_provider_id=service_provider_id,
+    #     group_id=group_id,
+    # ).hunt_group_table
 
-    group_cc_lst = api.raw_command(
-        "GroupHuntGroupGetInstanceListRequest",
-        service_provider_id=service_provider_id,
-        group_id=group_id,
-    )
+    # group_cc_lst = api.raw_command(
+    #     "GroupHuntGroupGetInstanceListRequest",
+    #     service_provider_id=service_provider_id,
+    #     group_id=group_id,
+    # )
 
     # GroupAutoAttendantGetInstanceRequest24 for single instances
     # GroupHuntGroupGetInstanceRequest20 for single instances
