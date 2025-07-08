@@ -13,7 +13,9 @@ readme = "README.md"
 requires-python = ">=3.9, <3.13"
 license = { file = "LICENSE" }
 authors = [
-    { name = "Jordan Prescott", email = "hello@minimalmind.io" }
+    { name = "Jordan Prescott", email = "devteam@fourteenip.com" },
+    { name = "Michael Clarke", email = "devteam@fourteenip.com" },
+    { name = "Billy Kelly", email = "devteam@fourteenip.com" }
 ]
 classifiers=[
     # Development Status
@@ -37,7 +39,6 @@ classifiers=[
 keywords = ["broadworks", "oci", "soap", "telephony", "voip"]
 
 dependencies = [
-    "broadworks-ocip>=2.2.0",
     "requests>=2.32.3",
     "zeep>=4.3.1",
 ]
