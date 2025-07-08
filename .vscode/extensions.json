@@ -6,6 +6,5 @@
 		"ms-python.debugpy",
 		"donjayamanne.python-environment-manager",
 		"tamasfe.even-better-toml",
-		"graykode.ai-docstring",
 	]
 }
