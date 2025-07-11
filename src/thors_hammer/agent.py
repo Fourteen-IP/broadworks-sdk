@@ -2,7 +2,7 @@
 # Where bulker and agent differ is bulker only tackles bulk builing bwks entities, agent pulls info and upates them.
 
 
-from .api import API
+from .client import API
 
 
 class Agent:
