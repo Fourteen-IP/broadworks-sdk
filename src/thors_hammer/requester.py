@@ -75,10 +75,21 @@ class SyncTCPRequester(BaseRequester):
 
 class SyncSOAPRequester(BaseRequester):
     def __init__(self, host: str, port: int = 2208, timeout: int = 10):
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-        self.client = httpx.Client(timeout=timeout)
+        super().__init__(host, port, timeout)
+        self.client = None
+
+    def connect(self):
+        if self.client is None:
+            self.client = httpx.Client(timeout=self.timeout)
+
+    def disconnect(self):
+        if self.client:
+            try:
+                self.client.close()
+            except Exception:
+                pass
+            finally:
+                self.client = None
 
     def send_command(self, command: BroadworksCommand) -> Any:
         try:
@@ -92,40 +103,66 @@ class SyncSOAPRequester(BaseRequester):
             print(f"Error: {e}")
             return None
 
+    def __del__(self):
+        self.disconnect()
+
 
 class AsyncTCPRequester(BaseRequester):
     def __init__(self, host: str, port: int = 2208, timeout: int = 10):
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-        self.socket = None
+        super().__init__(host, port, timeout)
+        self.reader = None
+        self.writer = None
 
-    async def send_command(self, command: BroadworksCommand) -> Any:
-        try:
-            reader, writer = await asyncio.open_connection(
+    async def connect(self):
+        if self.reader and self.writer is None:
+            self.reader, self.writer = await asyncio.open_connection(
                 host=self.host, port=self.port
             )
 
-            writer.write(command)
-            await writer.drain()
+    async def disconnect(self):
+        if self.reader and self.writer:
+            try:
+                self.writer.close()
+                await self.writer.wait_closed()
+            except Exception:
+                pass
+            finally:
+                self.writer = None
+                self.reader = None
 
-            response = await reader.readuntil(b"</BroadsoftDocument>")
+    async def send_command(self, command: BroadworksCommand) -> Any:
+        try:
+            self.writer.write(command)
+            await self.writer.drain()
 
-            writer.close()
-            await writer.wait_closed()
+            response = await self.reader.readuntil(b"</BroadsoftDocument>")
 
             return response.decode()
         except Exception as e:
             print(f"Error: {e}")
             return None
 
+    def __del__(self):
+        self.disconnect()
+
 
 class AsyncSOAPRequester(BaseRequester):
     def __init__(self, host: str, port: int = 2208, timeout: int = 10):
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-        self.client = httpx.AsyncClient(timeout=timeout)
+        super().__init__(host, port, timeout)
+        self.client = None
+
+    def connect(self):
+        if self.client is None:
+            self.client = httpx.Client(timeout=self.timeout)
+
+    def disconnect(self):
+        if self.client:
+            try:
+                self.client.close()
+            except Exception:
+                pass
+            finally:
+                self.client = None
 
     async def send_command(self, command: BroadworksCommand) -> Any:
         try:
@@ -143,6 +180,9 @@ class AsyncSOAPRequester(BaseRequester):
         except Exception as e:
             print(f"Error: {e}")
             return None
+
+    def __del__(self):
+        self.disconnect()
 
 
 def create_requester(
