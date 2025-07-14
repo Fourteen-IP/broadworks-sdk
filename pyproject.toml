@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thorz-hammer"
-version = "0.1.0"
+version = "0.0.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.9, <3.13"
@@ -39,6 +39,7 @@ classifiers=[
 keywords = ["broadworks", "oci", "soap", "telephony", "voip"]
 
 dependencies = [
+    "attrs>=21.4.0",
     "requests>=2.32.3",
     "zeep>=4.3.1",
 ]
