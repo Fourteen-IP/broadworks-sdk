@@ -12,40 +12,65 @@ class BaseRequester(ABC):
         self.host = host
         self.port = port
         self.timeout = timeout
+        self.session_id = ""
 
     @abstractmethod
     def send_command(self, command: BroadworksCommand) -> Any:
         pass
 
+    @abstractmethod
+    def connect(self):
+        pass
+
+    @abstractmethod
+    def disconnect(self):
+        pass
+
+    def __del__(self):
+        self.disconnect()
+
 
 class SyncTCPRequester(BaseRequester):
     def __init__(self, host: str, port: int = 2208, timeout: int = 10):
-        self.host = host
-        self.port = port
-        self.timeout = timeout
+        super().__init__(host, port, timeout)
+        self.sock = None
+
+    def connect(self):
+        if self.sock is None:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.settimeout(self.timeout)
+            self.sock.connect((self.host, self.port))
+
+    def disconnect(self):
+        if self.sock:
+            try:
+                self.sock.close()
+            except Exception:
+                pass
+            finally:
+                self.sock = None
 
     def send_command(self, command: BroadworksCommand) -> Any:
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(self.timeout)
-                sock.connect((self.host, self.port))
+            if self.sock is None:
+                self.connect()
 
-                sock.sendall(command)
+            self.sock.sendall(command)
 
-                response = b""
-                while True:
-                    data = sock.recv(1024)
-                    if not data:
-                        break
-                    response += data
+            response = b""
+            while True:
+                data = self.sock.recv(1024)
+                if not data:
+                    break
+                response += data
 
             return response.decode("utf-8")
         except Exception as e:
             print(f"Error: {e}")
             return None
 
-    def send_raw_command(self):
-        pass
+    def __del__(self):
+        self.disconnect()
 
 
 class SyncSOAPRequester(BaseRequester):
@@ -67,9 +92,6 @@ class SyncSOAPRequester(BaseRequester):
             print(f"Error: {e}")
             return None
 
-    def send_raw_command(self):
-        pass
-
 
 class AsyncTCPRequester(BaseRequester):
     def __init__(self, host: str, port: int = 2208, timeout: int = 10):
@@ -87,7 +109,7 @@ class AsyncTCPRequester(BaseRequester):
             writer.write(command)
             await writer.drain()
 
-            response = await reader.read()  # "If n is not provided or set to -1, read until EOF, then return all read bytes"
+            response = await reader.readuntil(b"</BroadsoftDocument>")
 
             writer.close()
             await writer.wait_closed()
@@ -96,9 +118,6 @@ class AsyncTCPRequester(BaseRequester):
         except Exception as e:
             print(f"Error: {e}")
             return None
-
-    def send_raw_command(self):
-        pass
 
 
 class AsyncSOAPRequester(BaseRequester):
@@ -124,9 +143,6 @@ class AsyncSOAPRequester(BaseRequester):
         except Exception as e:
             print(f"Error: {e}")
             return None
-
-    def send_raw_command(self):
-        pass
 
 
 def create_requester(
