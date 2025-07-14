@@ -301,6 +301,8 @@ name = "thorz-hammer"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "attrs" },
+    { name = "requests" },
     { name = "zeep" },
 ]
 
@@ -311,7 +313,11 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "zeep", specifier = ">=4.3.1" }]
+requires-dist = [
+    { name = "attrs", specifier = ">=21.4.0" },
+    { name = "requests", specifier = ">=2.32.3" },
+    { name = "zeep", specifier = ">=4.3.1" },
+]
 
 [package.metadata.requires-dev]
 dev = [
