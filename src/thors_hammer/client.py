@@ -46,7 +46,6 @@ class BaseClient(ABC):
 
     def __attrs_post_init__(self):
         try: 
-            self.authenticate()
             self._dispatch_table = self._set_up_dispatch_table()
             self.logger = self.logger or self._set_up_logging()
             self.session_id or str(uuid.uuid4())
@@ -58,6 +57,7 @@ class BaseClient(ABC):
                 logger=self.logger,
                 session_id=self.session_id
             )
+            self.authenticate()
         except Exception as e:
             print(f"Failed to authenticate {e}")
             raise Exception #TODO: Handle better
@@ -91,7 +91,7 @@ class BaseClient(ABC):
     def _set_up_dispatch_table(self):
         """Set up the dispatch table for the client"""
         # TODO: Set up dispatch table
-        self._dispatch_table = {}
+        return {}
 
     def _set_up_logging(self):
         """Common logging setup for all clients"""
@@ -272,6 +272,6 @@ class AsyncClient(BaseClient):
         self.authenticated = True
         return login_resp
     
-    def _receive_response(self, response: str) -> BWKSCommand: #TODO: this needs flushing out
+    def _receive_response(self, response: str) -> BWKSCommand: #TODO: this needs flushing out - parser object or dispatch table
         """Receives response from requester and returns BWKSCommand"""
         return BWKSCommand.from_xml(response)
