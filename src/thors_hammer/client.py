@@ -39,7 +39,7 @@ class BaseClient(ABC):
     user_agent: str = attr.ib(default="Thor\'s Hammer")
     timeout: int = attr.ib(default=30)
     logger: logging.Logger = attr.ib(default=None)
-    authenticated: bool = attr.id(default=False)
+    authenticated: bool = attr.ib(default=False)
     session_id: str = attr.ib(default=None)
 
     _dispatch_table: Dict[str, Type[BWKSCommand]] = attr.ib(default=None)
@@ -94,7 +94,7 @@ class BaseClient(ABC):
         self._dispatch_table = {}
 
     def _set_up_logging(self):
-        """Common logging setup for all APIs"""
+        """Common logging setup for all clients"""
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.WARNING)
         console_handler = logging.StreamHandler(sys.stdout)
@@ -118,7 +118,7 @@ class Client(BaseClient):
     Attributes:
         authenticated (bool): Whether the client is authenticated
         session_id (str): The session id of the client
-        dispatch_table (dict): The dispatch table of the client
+        _dispatch_table (dict): The dispatch table of the client
 
     Raises:
         Exception: If the client fails to authenticate
@@ -160,7 +160,7 @@ class Client(BaseClient):
         Raises:
             ValueError: If the command is not found in the dispatch table
         """
-        command_class = self.dispatch_table.get(command)
+        command_class = self._dispatch_table.get(command)
         if not command_class:
             self.logger.error(f"Command {command} not found in dispatch table")
             raise ValueError(f"Command {command} not found in dispatch table")
@@ -179,7 +179,7 @@ class Client(BaseClient):
         if self.authenticated:
             return
         try: 
-            auth_command = self.dispatch_table.get("AuthenticationRequest")
+            auth_command = self._dispatch_table.get("AuthenticationRequest")
             auth_resp = self.command(auth_command(user_id=self.username))
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
@@ -189,7 +189,7 @@ class Client(BaseClient):
                 .lower()
             )
 
-            login_command = self.dispatch_table.get("LoginResponse22V5")
+            login_command = self._dispatch_table.get("LoginResponse22V5")
             login_resp = self.command(
                 login_command(user_id=self.username, signed_password=signed_password)
             )
@@ -240,7 +240,7 @@ class AsyncClient(BaseClient):
         return self._receive_response(response)
 
     async def raw_command(self, command: str, **kwargs) -> BWKSCommand:
-        command_class = self.dispatch_table.get(command)
+        command_class = self._dispatch_table.get(command)
         if not command_class:
             self.logger.error(f"Command {command} not found in dispatch table")
             raise ValueError(f"Command {command} not found in dispatch table")
@@ -251,7 +251,7 @@ class AsyncClient(BaseClient):
         if self.authenticated:
             return
         try:        
-            auth_command = self.dispatch_table.get("AuthenticationRequest")
+            auth_command = self._dispatch_table.get("AuthenticationRequest")
             auth_resp = await self.command(auth_command(user_id=self.username))
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
@@ -261,7 +261,7 @@ class AsyncClient(BaseClient):
                 .lower()
             )
 
-            login_command = self.dispatch_table.get("LoginResponse22V5")
+            login_command = self._dispatch_table.get("LoginResponse22V5")
             login_resp = await self.command(
                 login_command(user_id=self.username, signed_password=signed_password)
             )

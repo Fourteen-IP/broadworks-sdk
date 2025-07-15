@@ -2,7 +2,7 @@
 # Where bulker and agent differ is bulker only tackles bulk builing bwks entities, agent pulls info and upates them.
 
 
-from .client import API
+from .client import BaseClient
 
 
 class Agent:
@@ -10,24 +10,24 @@ class Agent:
     __instance = None
 
     @staticmethod
-    def get_instance(api: API = None) -> "Agent":
+    def get_instance(Client: BaseClient = None) -> "Agent":
         """
         Singleton implementation for Agent object.
 
         Args:
-            api (API): API object to be used in the scripts.
+            Client (Client): Client object to be used in the scripts.
         """
         if Agent.__instance is None:
-            Agent.__instance = Agent(api)
+            Agent.__instance = Agent(Client)
         return Agent.__instance
 
     def __init__(
         self,
-        api: API,
+        Client: BaseClient,
     ) -> None:
         if Agent.__instance is not None:
             raise Exception("Singleton cannot be instantiated more than once!")
         else:
-            self.api = api
+            self.Client = Client
 
     

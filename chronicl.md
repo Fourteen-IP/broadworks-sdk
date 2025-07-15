@@ -1,4 +1,4 @@
-# [chronicl](https://github.com/minimal-mind/chronicl)
+[chronicl](https://github.com/minimal-mind/chronicl)
 
 ## CODEBASE OVERVIEW
 - Thor's Hammer is a Python library for interacting with BroadWorks servers.

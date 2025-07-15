@@ -1,5 +1,5 @@
 from typing import Optional, Any
-from .base_command import BroadworksCommand
+from ..base_command import BroadworksCommand
 
 
 class UserChargeNumberModifyRequest(BroadworksCommand):
