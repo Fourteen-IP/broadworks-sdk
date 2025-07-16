@@ -1,0 +1,13 @@
+site_name: Thor's Hammer
+site_description: A Python SDK for interacting with BroadWork OCIP API's (SOAP/ TCP).
+site_url: "https://fourteen-ip.github.io/thors-hammer/"
+repo_url: "https://github.com/fourteen-ip/thors-hammer"
+repo_name: "fourteen-ip/thors-hammer"
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
+  - Usage: usage.md
+  - API Reference: api.md
