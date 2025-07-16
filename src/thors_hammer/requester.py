@@ -2,13 +2,15 @@
 import httpx
 import asyncio
 import socket
+import logging
 from typing import Any
 from .commands.base_command import BroadworksCommand
 from abc import ABC, abstractmethod
 
 
 class BaseRequester(ABC):
-    def __init__(self, host: str, port: int, timeout: int):
+    def __init__(self, logger: logging.Logger, host: str, port: int, timeout: int):
+        self.logger = logger
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -31,21 +33,29 @@ class BaseRequester(ABC):
 
 
 class SyncTCPRequester(BaseRequester):
-    def __init__(self, host: str, port: int = 2208, timeout: int = 10):
-        super().__init__(host, port, timeout)
+    def __init__(
+        self, logger: logging.Logger, host: str, port: int = 2208, timeout: int = 10
+    ):
+        super().__init__(host, port, timeout, logger)
         self.sock = None
 
     def connect(self):
         if self.sock is None:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.settimeout(self.timeout)
-            self.sock.connect((self.host, self.port))
+            try:
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.sock.settimeout(self.timeout)
+                self.sock.connect((self.host, self.port))
+            except Exception as e:
+                self.logger.error(f"Failed to initiate socket on {self.__name__}: {e}")
 
     def disconnect(self):
         if self.sock:
             try:
                 self.sock.close()
-            except Exception:
+            except Exception as e:
+                self.logger.warning(
+                    f"Exception: {e} was raised when attemping to close {self.__name__}, but was ignored."
+                )
                 pass
             finally:
                 self.sock = None
@@ -66,7 +76,7 @@ class SyncTCPRequester(BaseRequester):
 
             return response.decode("utf-8")
         except Exception as e:
-            print(f"Error: {e}")
+            self.logger.error(f"Failed to send command over {self.__name__}: {e}")
             return None
 
     def __del__(self):
@@ -74,19 +84,27 @@ class SyncTCPRequester(BaseRequester):
 
 
 class SyncSOAPRequester(BaseRequester):
-    def __init__(self, host: str, port: int = 2208, timeout: int = 10):
-        super().__init__(host, port, timeout)
+    def __init__(
+        self, logger: logging.Logger, host: str, port: int = 2208, timeout: int = 10
+    ):
+        super().__init__(host, port, timeout, logger)
         self.client = None
 
     def connect(self):
         if self.client is None:
-            self.client = httpx.Client(timeout=self.timeout)
+            try:
+                self.client = httpx.Client(timeout=self.timeout)
+            except Exception as e:
+                self.logger.error(f"Failed to initiate client on {self.__name__}: {e}")
 
     def disconnect(self):
         if self.client:
             try:
                 self.client.close()
-            except Exception:
+            except Exception as e:
+                self.logger.warning(
+                    f"Exception: {e} was raised when attemping to close {self.__name__}, but was ignored."
+                )
                 pass
             finally:
                 self.client = None
@@ -100,7 +118,7 @@ class SyncSOAPRequester(BaseRequester):
             self.client.close()
             return response.text
         except Exception as e:
-            print(f"Error: {e}")
+            self.logger.error(f"Failed to send command over {self.__name__}: {e}")
             return None
 
     def __del__(self):
@@ -108,23 +126,31 @@ class SyncSOAPRequester(BaseRequester):
 
 
 class AsyncTCPRequester(BaseRequester):
-    def __init__(self, host: str, port: int = 2208, timeout: int = 10):
-        super().__init__(host, port, timeout)
+    def __init__(
+        self, logger: logging.Logger, host: str, port: int = 2208, timeout: int = 10
+    ):
+        super().__init__(host, port, timeout, logger)
         self.reader = None
         self.writer = None
 
     async def connect(self):
         if self.reader and self.writer is None:
-            self.reader, self.writer = await asyncio.open_connection(
-                host=self.host, port=self.port
-            )
+            try:
+                self.reader, self.writer = await asyncio.open_connection(
+                    host=self.host, port=self.port
+                )
+            except Exception as e:
+                self.logger.error(f"Failed to initiate socket on {self.__name__}: {e}")
 
     async def disconnect(self):
         if self.reader and self.writer:
             try:
                 self.writer.close()
                 await self.writer.wait_closed()
-            except Exception:
+            except Exception as e:
+                self.logger.warning(
+                    f"Exception: {e} was raised when attemping to close {self.__name__}, but was ignored."
+                )
                 pass
             finally:
                 self.writer = None
@@ -139,7 +165,7 @@ class AsyncTCPRequester(BaseRequester):
 
             return response.decode()
         except Exception as e:
-            print(f"Error: {e}")
+            self.logger.error(f"Failed to send command over {self.__name__}: {e}")
             return None
 
     def __del__(self):
@@ -147,19 +173,27 @@ class AsyncTCPRequester(BaseRequester):
 
 
 class AsyncSOAPRequester(BaseRequester):
-    def __init__(self, host: str, port: int = 2208, timeout: int = 10):
-        super().__init__(host, port, timeout)
+    def __init__(
+        self, logger: logging.Logger, host: str, port: int = 2208, timeout: int = 10
+    ):
+        super().__init__(host, port, timeout, logger)
         self.client = None
 
     def connect(self):
         if self.client is None:
-            self.client = httpx.Client(timeout=self.timeout)
+            try:
+                self.client = httpx.Client(timeout=self.timeout)
+            except Exception as e:
+                self.logger.error(f"Failed to initiate client on {self.__name__}: {e}")
 
     def disconnect(self):
         if self.client:
             try:
                 self.client.close()
-            except Exception:
+            except Exception as e:
+                self.logger.warning(
+                    f"Exception: {e} was raised when attemping to close {self.__name__}, but was ignored."
+                )
                 pass
             finally:
                 self.client = None
@@ -178,7 +212,7 @@ class AsyncSOAPRequester(BaseRequester):
 
             return response.text
         except Exception as e:
-            print(f"Error: {e}")
+            self.logger.error(f"Failed to send command over {self.__name__}: {e}")
             return None
 
     def __del__(self):
@@ -186,15 +220,29 @@ class AsyncSOAPRequester(BaseRequester):
 
 
 def create_requester(
-    host: str, port: int, connection_type: str = "SOAP", async_: bool = True
+    logger: logging.Logger,
+    sessionid_id: str,
+    host: str,
+    port: int,
+    connection_type: str = "SOAP",
+    async_: bool = True,
+    timeout: int = 10,
 ) -> BaseRequester:
     if connection_type == "SOAP":
         if async_:
-            return AsyncSOAPRequester(host, port)
+            return AsyncSOAPRequester(
+                host=host, port=port, timeout=timeout, logger=logger
+            )
         else:
-            return SyncSOAPRequester(host, port)
+            return SyncSOAPRequester(
+                host=host, port=port, timeout=timeout, logger=logger
+            )
     elif connection_type == "TCP":
         if async_:
-            return AsyncTCPRequester(host, port)
+            return AsyncTCPRequester(
+                host=host, port=port, timeout=timeout, logger=logger
+            )
         else:
-            return SyncTCPRequester(host, port)
+            return SyncTCPRequester(
+                host=host, port=port, timeout=timeout, logger=logger
+            )
