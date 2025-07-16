@@ -659,6 +659,7 @@ dependencies = [
 dev = [
     { name = "mkdocs" },
     { name = "mkdocs-material" },
+    { name = "pymdown-extensions" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -674,6 +675,7 @@ requires-dist = [
 dev = [
     { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mkdocs-material", specifier = ">=9.6.15" },
+    { name = "pymdown-extensions", specifier = ">=10.16" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "ruff", specifier = ">=0.8.1" },
 ]
