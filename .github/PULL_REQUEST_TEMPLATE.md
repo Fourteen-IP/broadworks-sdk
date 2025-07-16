@@ -8,7 +8,7 @@
 
 ## Reviewer Only
 
-- [] Github checks are passing
-- [] Unit tests are passing
-- [] Docstrings, comments, and other documentation added where necessary
-- [] Code performs the intended functionality
+- [ ] Github checks are passing
+- [ ] Unit tests are passing
+- [ ] Docstrings, comments, and other documentation added where necessary
+- [ ] Code performs the intended functionality
