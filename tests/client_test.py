@@ -35,7 +35,6 @@ def mock_logging():
 class TestClientSetup:
     def test_client_initialises_with_defaults(self, mock_auth, mock_dispatch, mock_logging):
         client = Client(host="localhost", username="user", password="pass")
-        client._dispatch_table = mock_dispatch
         
         assert client.host == "localhost"
         assert client.username == "user"

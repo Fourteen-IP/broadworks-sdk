@@ -51,6 +51,10 @@
 
 ## JOURNAL
 
+@Jordan-Prescott 15.07.2025
+- Added tests for the client class found in tests/client_tests.py
+- Adjusted the _receive_response in client which will use the response object from requester to capture class to return
+
 @Jordan-Prescott 14.07.2025
 - Client class now first draft with most of the functionality in place, yet some things still need flushing out.
 - Both client and AsycClient done

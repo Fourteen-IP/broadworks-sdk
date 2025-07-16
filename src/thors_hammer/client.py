@@ -7,15 +7,10 @@ from abc import ABC, abstractmethod
 
 from .commands.base_command import BroadworksCommand as BWKSCommand
 from .requester import create_requester 
-from .exceptions import THError
+from .libs.response import RequesterResponse
+from .exceptions import THError, THErrorResponse
 
 import attr
-'''
-TODO: 
-- Dispatch table
-- command classes I think can be condensed with the use of command classes and dist table
-- BWKSCommand may be BWKSType
-'''
 
 @attr.s(slots=True, kw_only=True)
 class BaseClient(ABC):
@@ -45,22 +40,18 @@ class BaseClient(ABC):
     _dispatch_table: Dict[str, Type[BWKSCommand]] = attr.ib(default=None)
 
     def __attrs_post_init__(self):
-        try: 
-            self._dispatch_table = self._set_up_dispatch_table()
-            self.logger = self.logger or self._set_up_logging()
-            self.session_id or str(uuid.uuid4())
-            self.requester = create_requester(
-                conn_type=self.conn_type,
-                async_mode=self.async_mode,
-                host=self.host,
-                timeout=self.timeout,
-                logger=self.logger,
-                session_id=self.session_id
-            )
-            self.authenticate()
-        except Exception as e:
-            print(f"Failed to authenticate {e}")
-            raise Exception #TODO: Handle better
+        self._dispatch_table = self._set_up_dispatch_table()
+        self.logger = self.logger or self._set_up_logging()
+        self.session_id or str(uuid.uuid4())
+        self.requester = create_requester(
+            conn_type=self.conn_type,
+            async_mode=self.async_mode,
+            host=self.host,
+            timeout=self.timeout,
+            logger=self.logger,
+            session_id=self.session_id
+        )
+        self.authenticate()
     
     @property
     @abstractmethod
@@ -84,7 +75,7 @@ class BaseClient(ABC):
         pass
 
     @abstractmethod
-    def _receive_response(self, response: str) -> BWKSCommand:
+    def _receive_response(self, response: RequesterResponse) -> BWKSCommand:
         """Receives response from requester and returns BWKSCommand"""
         pass
     
@@ -170,17 +161,19 @@ class Client(BaseClient):
         """
         Authenticates client with username and password in client.
 
+        Note: Directly send request to requester to avoid double authentication
+
         Returns:
             BWKSCommand: The response from the server
 
         Raises:
-            ValueError: If the command is not found in the dispatch table
+            THError: If the command is not found in the dispatch table
         """
         if self.authenticated:
             return
         try: 
             auth_command = self._dispatch_table.get("AuthenticationRequest")
-            auth_resp = self.command(auth_command(user_id=self.username))
+            auth_resp = self.requester.send_request(auth_command(user_id=self.username).to_xml())
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
             signed_password = (
@@ -190,8 +183,8 @@ class Client(BaseClient):
             )
 
             login_command = self._dispatch_table.get("LoginResponse22V5")
-            login_resp = self.command(
-                login_command(user_id=self.username, signed_password=signed_password)
+            login_resp = self.requester.send_request(
+                login_command(user_id=self.username, signed_password=signed_password).to_xml()
             )
         except Exception as e:
             self.logger.error(f"Failed to authenticate: {e}")
@@ -200,9 +193,16 @@ class Client(BaseClient):
         self.authenticated = True
         return login_resp
 
-    def _receive_response(self, response: str) -> BWKSCommand:
+    def _receive_response(self, response: RequesterResponse) -> BWKSCommand:
         """Receives response from requester and returns BWKSCommand"""
-        return BWKSCommand.from_xml(response)
+        if not response.success:
+            raise THError(f"Request failed: {response.error_message}")
+        
+        response_class = self._dispatch_table.get(response.command_name)
+        if not response_class:
+            self.logger.error(f"Response class {response.command_name} not found in dispatch table")
+            raise THErrorResponse(f"Response class {response.command_name} not found in dispatch table")
+        return response_class.from_xml(response.value)
 
 class AsyncClient(BaseClient):
     """Asycn version of Client.
@@ -232,6 +232,16 @@ class AsyncClient(BaseClient):
         return True
     
     async def command(self, command: BWKSCommand) -> BWKSCommand:
+        """
+        Executes all requests to the server.
+        If the client is not authenticated, it will authenticate first.
+
+        Args:
+            command (BWKSCommand): The command class to execute
+
+        Returns:
+            BWKSCommand: The response from the server
+        """
         if not self.authenticated:
             await self.authenticate()
         self.logger.info(f"Executing command: {command.__class__.__name__}")
@@ -240,6 +250,19 @@ class AsyncClient(BaseClient):
         return self._receive_response(response)
 
     async def raw_command(self, command: str, **kwargs) -> BWKSCommand:
+        """
+        Executes raw command specified by end user - instantiates class command.
+
+        Args:
+            command (str): The command to execute
+            **kwargs: The arguments to pass to the command
+
+        Returns:
+            BWKSCommand: The response from the server
+
+        Raises:
+            ValueError: If the command is not found in the dispatch table
+        """
         command_class = self._dispatch_table.get(command)
         if not command_class:
             self.logger.error(f"Command {command} not found in dispatch table")
@@ -248,11 +271,22 @@ class AsyncClient(BaseClient):
         return response
 
     async def authenticate(self) -> BWKSCommand:
+        """
+        Authenticates client with username and password in client.
+
+        Note: Directly send request to requester to avoid double authentication
+
+        Returns:
+            BWKSCommand: The response from the server
+
+        Raises:
+            THError: If the command is not found in the dispatch table
+        """
         if self.authenticated:
             return
         try:        
             auth_command = self._dispatch_table.get("AuthenticationRequest")
-            auth_resp = await self.command(auth_command(user_id=self.username))
+            auth_resp = await self.requester.send_request(auth_command(user_id=self.username).to_xml())
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
             signed_password = (
@@ -262,8 +296,8 @@ class AsyncClient(BaseClient):
             )
 
             login_command = self._dispatch_table.get("LoginResponse22V5")
-            login_resp = await self.command(
-                login_command(user_id=self.username, signed_password=signed_password)
+            login_resp = await self.requester.send_request(
+                login_command(user_id=self.username, signed_password=signed_password).to_xml()
             )
         except Exception as e:
             self.logger.error(f"Failed to authenticate: {e}")
@@ -272,6 +306,13 @@ class AsyncClient(BaseClient):
         self.authenticated = True
         return login_resp
     
-    def _receive_response(self, response: str) -> BWKSCommand: #TODO: this needs flushing out - parser object or dispatch table
+    def _receive_response(self, response: RequesterResponse) -> BWKSCommand:
         """Receives response from requester and returns BWKSCommand"""
-        return BWKSCommand.from_xml(response)
+        if not response.success:
+            raise THError(f"Request failed: {response.error_message}")
+        
+        response_class = self._dispatch_table.get(response.command_name)
+        if not response_class:
+            self.logger.error(f"Response class {response.command_name} not found in dispatch table")
+            raise THErrorResponse(f"Response class {response.command_name} not found in dispatch table")
+        return response_class.from_xml(response.value)
