@@ -3,12 +3,16 @@ import logging
 import hashlib
 import uuid
 from typing import Dict, Type
+import inspect
 from abc import ABC, abstractmethod
 
-from .commands.base_command import BroadworksCommand as BWKSCommand
-from .requester import create_requester 
-from .libs.response import RequesterResponse
-from .exceptions import THError, THErrorResponse
+from commands import oci_types, oci_requests, oci_responses
+from commands.base_command import OCICommand as BWKSCommand
+from commands.base_command import ErrorResponse as BWKSErrorResponse
+from commands.base_command import SuccessResponse as BWKSSucessResponse
+from requester import create_requester 
+from libs.response import RequesterResponse
+from exceptions import THError, THErrorResponse
 
 import attr
 
@@ -40,7 +44,7 @@ class BaseClient(ABC):
     _dispatch_table: Dict[str, Type[BWKSCommand]] = attr.ib(default=None)
 
     def __attrs_post_init__(self):
-        self._dispatch_table = self._set_up_dispatch_table()
+        self._set_up_dispatch_table()
         self.logger = self.logger or self._set_up_logging()
         self.session_id or str(uuid.uuid4())
         self.requester = create_requester(
@@ -81,8 +85,16 @@ class BaseClient(ABC):
     
     def _set_up_dispatch_table(self):
         """Set up the dispatch table for the client"""
-        # TODO: Set up dispatch table
-        return {}
+        self._dispatch_table = {}
+
+        for module in [oci_types, oci_requests, oci_responses]:
+            for name, cls in inspect.getmembers(module, inspect.isclass):
+                if issubclass(cls, BWKSCommand) and cls is not BWKSCommand:
+                    self._dispatch_table[cls.__name__] = cls
+
+        # manually append as we handle ErrorResponse & SucessResponse in base_command
+        for cls in [BWKSErrorResponse, BWKSSucessResponse]:
+            self._dispatch_table[cls.__name__] = cls
 
     def _set_up_logging(self):
         """Common logging setup for all clients"""
