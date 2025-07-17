@@ -7,7 +7,6 @@ from typing import Any
 from .commands.base_command import BroadworksCommand
 from abc import ABC, abstractmethod
 
-
 class BaseRequester(ABC):
     def __init__(self, logger: logging.Logger, host: str, port: int, timeout: int):
         self.logger = logger
