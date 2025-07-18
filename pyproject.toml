@@ -6,7 +6,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "thorz-hammer"
+name = "thors-hammer"
 version = "0.0.1"
 description = "Add your description here"
 readme = "README.md"
@@ -39,7 +39,9 @@ classifiers=[
 keywords = ["broadworks", "oci", "soap", "telephony", "voip"]
 
 dependencies = [
+    "asyncio>=3.4.3",
     "attrs>=21.4.0",
+    "httpx>=0.28.1",
     "pydantic>=2.11.7",
     "requests>=2.32.3",
     "zeep>=4.3.1",

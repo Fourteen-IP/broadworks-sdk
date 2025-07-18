@@ -37,7 +37,7 @@ class Parser:
 
             serialize_value(root, attr, value)
 
-        return ET.tostring(root, encoding="utf-8", xml_declaration=True).decode("utf-8")
+        return ET.tostring(root, encoding="utf-8", xml_declaration=False).decode("utf-8")
 
     @staticmethod
     def to_xml_from_dict(data: dict, cls: Type) -> str:
