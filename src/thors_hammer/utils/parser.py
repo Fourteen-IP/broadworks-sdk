@@ -5,11 +5,44 @@ import xml.etree.ElementTree as ET
 from typing import get_type_hints, List, get_args, Union, Type
 
 class Parser:
+    # @staticmethod
+    # def to_xml_from_class(obj: object) -> str:
+    #     def serialize_value(parent, tag, value):
+    #         if type(value).__name__ == "OCIType":
+    #         # if isinstance(value, OCIType):
+    #             child = ET.SubElement(parent, tag)
+    #             data = Parser.to_dict_from_class(value)
+    #             for k, v in data.items():
+    #                 if v is not None:
+    #                     ET.SubElement(child, k).text = str(v)
+    #         else:
+    #             ET.SubElement(parent, tag).text = str(value)
+
+    #     root_tag = obj.__class__.__name__
+    #     root = ET.Element(root_tag, xmlns=obj.namespace)
+
+    #     type_hints = get_type_hints(obj.__class__)
+    #     for attr, hint in type_hints.items():
+    #         value = getattr(obj, attr, None)
+    #         if value is None:
+    #             continue
+
+    #         args = get_args(hint)
+    #         if args:
+    #             origin = getattr(hint, '__origin__', None)
+    #             if origin in (list, List):
+    #                 for item in value:
+    #                     serialize_value(root, attr, item)
+    #                 continue
+
+    #         serialize_value(root, attr, value)
+
+    #     return ET.tostring(root, encoding="utf-8", xml_declaration=False).decode("utf-8")
+    
     @staticmethod
     def to_xml_from_class(obj: object) -> str:
         def serialize_value(parent, tag, value):
             if type(value).__name__ == "OCIType":
-            # if isinstance(value, OCIType):
                 child = ET.SubElement(parent, tag)
                 data = Parser.to_dict_from_class(value)
                 for k, v in data.items():
@@ -18,8 +51,13 @@ class Parser:
             else:
                 ET.SubElement(parent, tag).text = str(value)
 
-        root_tag = obj.__class__.__name__
-        root = ET.Element(root_tag, xmlns=obj.namespace)
+        root = ET.Element(
+            "command",
+            attrib={
+                "xmlns": "",
+                "xsi:type": obj.__class__.__name__,
+            }
+        )
 
         type_hints = get_type_hints(obj.__class__)
         for attr, hint in type_hints.items():
