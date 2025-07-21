@@ -14,6 +14,8 @@ from commands.base_command import SuccessResponse as BWKSSucessResponse
 from requester import create_requester
 from libs.response import RequesterResponse
 from exceptions import THError, THErrorResponse
+from utils.parser import Parser
+from commands.oci_responses import AuthenticationResponse
 
 import attr
 
@@ -199,6 +201,8 @@ class Client(BaseClient):
             auth_resp = self.requester.send_request(
                 auth_command(userId=self.username).to_xml()
             )
+
+            auth_resp = Parser.to_class_from_xml(auth_resp, AuthenticationResponse)
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
             signed_password = (

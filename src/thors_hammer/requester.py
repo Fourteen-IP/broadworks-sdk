@@ -90,7 +90,15 @@ class SyncTCPRequester(BaseRequester):
             if self.sock is None:
                 self.connect()
 
-            command_bytes = command.encode("utf-8") + b"\0"
+            command_bytes = (
+                "<?xml version='1.0' encoding='ISO-8859-1'?>"
+                '<BroadsoftDocument xmlns="C" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" protocol="OCI">'
+                f'<sessionId xmlns="">{self.session_id}</sessionId>'
+                f"{command}"
+                "</BroadsoftDocument>"
+            )
+
+            command_bytes = command_bytes.encode("utf-8")
 
             self.sock.sendall(command_bytes + b"\0")
 
