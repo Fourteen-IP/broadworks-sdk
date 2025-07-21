@@ -15,7 +15,7 @@ class AuthenticationResponse(OCIDataResponse):
 
     userId: str
 
-    none: str
+    nonce: str
 
     passwordAlgorithm: str
 

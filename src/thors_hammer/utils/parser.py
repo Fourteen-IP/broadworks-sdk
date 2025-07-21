@@ -123,10 +123,10 @@ class Parser:
         init_args = {}
 
         for key, hint in type_hints.items():
-            if key not in data:
+            if key not in data.get("command"):
                 continue
 
-            value = data[key]
+            value = data.get("command")[key]
             args = get_args(hint)
             origin = getattr(hint, '__origin__', None)
 

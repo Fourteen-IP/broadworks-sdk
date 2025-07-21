@@ -198,11 +198,15 @@ class Client(BaseClient):
                 "AuthenticationRequest"
             )
 
-            auth_resp = self.requester.send_request(
-                auth_command(userId=self.username).to_xml()
+            # Make Client GetResponseObj Routine
+            auth_resp = Parser.to_class_from_xml(
+                self.requester.send_request(
+                    auth_command(userId=self.username).to_xml()
+                ),
+                    self._dispatch_table.get(
+                    "AuthenticationResponse"
+                )
             )
-
-            auth_resp = Parser.to_class_from_xml(auth_resp, AuthenticationResponse)
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
             signed_password = (
@@ -211,11 +215,15 @@ class Client(BaseClient):
                 .lower()
             )
 
-            login_command = self._dispatch_table.get("LoginResponse22V5")
-            login_resp = self.requester.send_request(
-                login_command(
-                    user_id=self.username, signed_password=signed_password
-                ).to_xml()
+            login_command = self._dispatch_table.get("LoginRequest22V5")
+
+            login_resp = Parser.to_class_from_xml(
+                self.requester.send_request(
+                    auth_command(userId=self.username, signedPassword=signed_password).to_xml()
+                ),
+                    self._dispatch_table.get(
+                    "LoginResponse22V5"
+                )
             )
         except Exception as e:
             self.logger.error(f"Failed to authenticate: {e}")
