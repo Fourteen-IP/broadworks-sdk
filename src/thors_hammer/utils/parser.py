@@ -55,7 +55,7 @@ class Parser:
             "command",
             attrib={
                 "xmlns": "",
-                "xsi:type": obj.__class__.__name__,
+                "{http://www.w3.org/2001/XMLSchema-instance}type": obj.__class__.__name__,
             }
         )
 
@@ -109,12 +109,29 @@ class Parser:
             xml = ET.fromstring(xml)
 
         result = {}
-        for child in xml:
-            # Handle nested elements
-            if len(child):
-                result[child.tag] = Parser.to_dict_from_xml(child)
+
+        if xml.attrib:
+            result["attributes"] = dict(xml.attrib)
+
+        children = list(xml)
+        if children:
+            for child in children:
+                child_dict = Parser.to_dict_from_xml(child)
+
+                if child.tag in result:
+                    if isinstance(result[child.tag], list):
+                        result[child.tag].append(child_dict)
+                    else:
+                        result[child.tag] = [result[child.tag], child_dict]
+                else:
+                    result[child.tag] = child_dict
+        else:
+            text = xml.text.strip() if xml.text else ""
+            if result:
+                result["text"] = text
             else:
-                result[child.tag] = child.text
+                result = text
+
         return result
 
     @staticmethod
