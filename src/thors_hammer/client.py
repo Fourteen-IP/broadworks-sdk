@@ -225,6 +225,9 @@ class Client(BaseClient):
     def _receive_response( self, response: Union[tuple | str] ) -> BWKSCommand:
         """Receives response from requester and returns BWKSCommand"""
 
+        if isinstance(response, tuple):
+            raise response[0](response[1])
+
         # Extract Typename From Raw Response
         type_name: str = Parser.to_dict_from_xml( response ).get( "command" ).get( "attributes" ).get( "{http://www.w3.org/2001/XMLSchema-instance}type" )
 

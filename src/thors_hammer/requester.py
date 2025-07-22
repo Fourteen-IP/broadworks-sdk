@@ -78,7 +78,7 @@ class SyncTCPRequester(BaseRequester):
                 self.logger.error(
                     f"Failed to initiate socket on {self.__class__.__name__}: {e}"
                 )
-                return (THErrorSocketInitialisation(), e)
+                return (THErrorSocketInitialisation, e)
 
     def disconnect(self):
         if self.sock:
@@ -126,9 +126,9 @@ class SyncTCPRequester(BaseRequester):
             return content.rstrip(b"\0").decode("utf-8")
         except socket.timeout as e:
             self.logger.error(f"Socket timed out: {self.__class__.__name__}: {e}")
-            return (THErrorSocketTimeout(), e)
+            return (THErrorSocketTimeout, e)
         except Exception as e:
-            return (THErrorSendRequestFailed(), e)
+            return (THErrorSendRequestFailed, e)
 
     def __del__(self):
         self.disconnect()
