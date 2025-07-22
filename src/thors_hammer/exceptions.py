@@ -26,6 +26,7 @@ class THErrorResponse(THError):
     """
     Exception raised when an ErrorResponse is received and decoded.
     """
+
     pass
 
 
@@ -34,6 +35,7 @@ class THErrorTimeOut(THError):
     """
     Exception raised when nothing is head back from the server.
     """
+
     pass
 
 
@@ -42,6 +44,7 @@ class THErrorUnknown(THError):
     """
     Exception raised when life becomes too much for the software.
     """
+
     pass
 
 
@@ -50,6 +53,7 @@ class THErrorAPISetup(THError):
     """
     Exception raised when life becomes too much for the software.
     """
+
     pass
 
 
@@ -58,6 +62,7 @@ class THErrorAttributeMissing(THError):
     """
     Exception raised when a required attribute is missing.
     """
+
     pass
 
 
@@ -66,4 +71,32 @@ class THErrorUnexpectedAttribute(THError):
     """
     Exception raised when additional elements passed to __init__
     """
+
+    pass
+
+
+@attr.s(slots=True, frozen=True)
+class THErrorSocketInitialisation(THError):
+    """
+    Exception raised when the TCP socket fails to initiate.
+    """
+
+    pass
+
+
+@attr.s(slots=True, frozen=True)
+class THErrorSocketTimeout(THError):
+    """
+    Exception raised when the TCP socket fails to initiate.
+    """
+
+    pass
+
+
+@attr.s(slots=True, frozen=True)
+class THErrorSendRequestFailed(THError):
+    """
+    Exception raised when the TCP socket fails to initiate.
+    """
+
     pass

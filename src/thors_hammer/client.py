@@ -15,7 +15,6 @@ from requester import create_requester
 from libs.response import RequesterResponse
 from exceptions import THError, THErrorResponse
 from utils.parser import Parser
-from commands.oci_responses import AuthenticationResponse
 
 import attr
 
@@ -63,7 +62,6 @@ class BaseClient(ABC):
             logger=self.logger,
             session_id=self.session_id,
         )
-        self.requester.connect()
         self.authenticate()
 
     @property
@@ -203,9 +201,7 @@ class Client(BaseClient):
                 self.requester.send_request(
                     auth_command(userId=self.username).to_xml()
                 ),
-                    self._dispatch_table.get(
-                    "AuthenticationResponse"
-                )
+                self._dispatch_table.get("AuthenticationResponse"),
             )
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
@@ -219,11 +215,9 @@ class Client(BaseClient):
 
             login_resp = Parser.to_class_from_xml(
                 self.requester.send_request(
-                    auth_command(userId=self.username, signedPassword=signed_password).to_xml()
+                    login_command(userId=self.username, password=self.password).to_xml()
                 ),
-                    self._dispatch_table.get(
-                    "LoginResponse22V5"
-                )
+                self._dispatch_table.get("LoginResponse22V5"),
             )
         except Exception as e:
             self.logger.error(f"Failed to authenticate: {e}")

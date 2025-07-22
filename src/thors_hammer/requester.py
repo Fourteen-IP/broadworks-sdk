@@ -5,6 +5,11 @@ import socket
 import ssl
 import select
 import logging
+from exceptions import (
+    THErrorSocketInitialisation,
+    THErrorSendRequestFailed,
+    THErrorSocketTimeout,
+)
 from typing import Any
 from commands.base_command import OCICommand as BroadworksCommand
 from abc import ABC, abstractmethod
@@ -50,10 +55,11 @@ class SyncTCPRequester(BaseRequester):
         timeout: int = 30,
         session_id: str = None,
     ):
+        self.sock = None
         super().__init__(
             logger=logger, host=host, port=port, timeout=timeout, session_id=session_id
         )
-        self.sock = None
+        self.connect()
 
     def connect(self):
         if self.sock is None:
@@ -72,6 +78,7 @@ class SyncTCPRequester(BaseRequester):
                 self.logger.error(
                     f"Failed to initiate socket on {self.__class__.__name__}: {e}"
                 )
+                return (THErrorSocketInitialisation(), e)
 
     def disconnect(self):
         if self.sock:
@@ -81,7 +88,7 @@ class SyncTCPRequester(BaseRequester):
                 self.logger.warning(
                     f"Exception: {e} was raised when attemping to close {self.__class__.__name__}, but was ignored."
                 )
-                pass
+                pass  # Pass as this is expected behaviour, but better to put a warning.
             finally:
                 self.sock = None
 
@@ -106,7 +113,6 @@ class SyncTCPRequester(BaseRequester):
             while True:
                 readable, _, _ = select.select([self.sock], [], [], self.timeout)
                 if not readable:
-                    self.logger.warning("Socket read timed out")
                     break
 
                 chunk = self.sock.recv(4096)
@@ -118,11 +124,11 @@ class SyncTCPRequester(BaseRequester):
                     break
 
             return content.rstrip(b"\0").decode("utf-8")
+        except socket.timeout as e:
+            self.logger.error(f"Socket timed out: {self.__class__.__name__}: {e}")
+            return (THErrorSocketTimeout(), e)
         except Exception as e:
-            self.logger.error(
-                f"Failed to send command over {self.__class__.__name__}: {e}"
-            )
-            return None
+            return (THErrorSendRequestFailed(), e)
 
     def __del__(self):
         self.disconnect()
