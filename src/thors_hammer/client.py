@@ -194,21 +194,14 @@ class Client(BaseClient):
         if self.authenticated:
             return
         try:
-            auth_command: AuthenticationRequest = self._dispatch_table.get(
-                "AuthenticationRequest"
-            )
-
-            # Make Client GetResponseObj Routine
-            auth_resp = Parser.to_class_from_xml(
+            auth_resp = self._receive_response(
                 self.requester.send_request(
-                    auth_command(userId=self.username).to_xml()
-                ),
-                    self._dispatch_table.get(
-                    "AuthenticationResponse"
+                    self._dispatch_table.get("AuthenticationRequest")(userId=self.username).to_xml()
                 )
             )
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
+            
             signed_password = (
                 hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
                 .hexdigest()
@@ -219,7 +212,7 @@ class Client(BaseClient):
 
             login_resp = Parser.to_class_from_xml(
                 self.requester.send_request(
-                    auth_command(userId=self.username, signedPassword=signed_password).to_xml()
+                    login_command(userId=self.username, signedPassword=signed_password).to_xml()
                 ),
                     self._dispatch_table.get(
                     "LoginResponse22V5"
