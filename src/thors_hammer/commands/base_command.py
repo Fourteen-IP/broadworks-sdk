@@ -1,6 +1,7 @@
-import xml.etree.ElementTree as ET
 from typing import get_type_hints, Union, Optional
-from utils.parser import Parser
+import xml.etree.ElementTree as ET
+
+from thors_hammer.utils.parser import Parser
 
 class OCIType:
     # Base class for Broadworks types

@@ -1,9 +1,9 @@
 # Auto-generated file
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Any, Optional, List
+from typing import Optional, List
 
-from .base_command import OCIType, OCICommand
+from thors_hammer.commands.base_command import OCIType, OCICommand
 
 @dataclass
 class PasswordForAccessDevice(OCIType):

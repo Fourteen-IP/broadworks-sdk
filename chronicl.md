@@ -51,6 +51,10 @@
 
 ## JOURNAL
 
+@Jordan-Prescott 22.07.2025
+- Added absolute import statements as this is a python package its best practuice 
+- Imports should follow order: standard packages, internal packages, external packages at the bottom
+
 @Jordan-Prescott 15.07.2025
 - Added tests for the client class found in tests/client_tests.py
 - Adjusted the _receive_response in client which will use the response object from requester to capture class to return

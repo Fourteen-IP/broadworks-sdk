@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, List
 
-from .base_command import OCIDataResponse
-from .oci_types import *
+from thors_hammer.commands.base_command import OCIDataResponse
+from thors_hammer.commands.oci_types import * # noqa: F403
 
 
 @dataclass

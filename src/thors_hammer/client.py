@@ -2,20 +2,18 @@ import sys
 import logging
 import hashlib
 import uuid
-from typing import Dict, Type
 import inspect
+from typing import Dict, Type
 from abc import ABC, abstractmethod
 
-from commands import oci_types, oci_requests, oci_responses
-from commands.oci_requests import AuthenticationRequest
-from commands.base_command import OCICommand as BWKSCommand
-from commands.base_command import ErrorResponse as BWKSErrorResponse
-from commands.base_command import SuccessResponse as BWKSSucessResponse
-from requester import create_requester
-from libs.response import RequesterResponse
-from exceptions import THError, THErrorResponse
-from utils.parser import Parser
-from commands.oci_responses import AuthenticationResponse
+from thors_hammer.commands import oci_types, oci_requests, oci_responses
+from thors_hammer.commands.base_command import OCICommand as BWKSCommand
+from thors_hammer.commands.base_command import ErrorResponse as BWKSErrorResponse
+from thors_hammer.commands.base_command import SuccessResponse as BWKSSucessResponse
+from thors_hammer.requester import create_requester
+from thors_hammer.libs.response import RequesterResponse
+from thors_hammer.exceptions import THError, THErrorResponse
+from thors_hammer.utils.parser import Parser
 
 import attr
 
@@ -36,9 +34,9 @@ class BaseClient(ABC):
     """
 
     host: str = attr.ib()
-    port: int = attr.ib()
     username: str = attr.ib()
     password: str = attr.ib()
+    port: int = attr.ib(default=2209)
     conn_type: str = attr.ib(
         default="TCP", validator=attr.validators.in_(["TCP", "SOAP"])
     )

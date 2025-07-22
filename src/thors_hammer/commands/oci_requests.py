@@ -1,10 +1,10 @@
 # Auto-generated file
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Any, Optional, List
+from typing import Optional, List
 
-from .base_command import OCIRequest
-from .oci_types import *
+from thors_hammer.commands.base_command import OCIRequest
+from thors_hammer.commands.oci_types import * # noqa: F403
 
 
 @dataclass

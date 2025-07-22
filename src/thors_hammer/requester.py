@@ -1,14 +1,15 @@
 # this will be resposnsible for sending and receiving data from the API
-import httpx
-import asyncio
 import socket
 import ssl
 import select
 import logging
 from typing import Any
-from commands.base_command import OCICommand as BroadworksCommand
 from abc import ABC, abstractmethod
 
+from thors_hammer.commands.base_command import OCICommand as BroadworksCommand
+
+import httpx 
+import asyncio
 
 class BaseRequester(ABC):
     def __init__(
