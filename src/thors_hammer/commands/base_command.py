@@ -3,10 +3,19 @@ from typing import get_type_hints, Union, Optional
 from utils.parser import Parser
 
 class OCIType:
-    # Base class for Broadworks types
+    """
+    Base Class For Broadworks Types
+
+    method_table:
+
+    - __init__: Handles dataclass default initialisation of raw objects
+    - to_dict: Invokes Parser to_dict_from_class
+    - to_xml: Invokes Parser to_xml_from_class
+    - from_dict: Invokes Parser to_class_from_dict 
+    - from_xml: Invokes Parser to_class_from_xml
+    """
     namespace = "C"
 
-    # Handles dataclass default initialisation
     def __init__(self, **kwargs):
         annotations = get_type_hints(self.__class__)
         for key, value in kwargs.items():
