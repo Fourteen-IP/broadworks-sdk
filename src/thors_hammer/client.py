@@ -2,7 +2,7 @@ import sys
 import logging
 import hashlib
 import uuid
-from typing import Dict, Type
+from typing import Dict, Type, Union
 import inspect
 from abc import ABC, abstractmethod
 
@@ -192,33 +192,29 @@ class Client(BaseClient):
         if self.authenticated:
             return
         try:
-            auth_command: AuthenticationRequest = self._dispatch_table.get(
-                "AuthenticationRequest"
-            )
-
-            # Make Client GetResponseObj Routine
-            auth_resp = Parser.to_class_from_xml(
+            auth_resp = self._receive_response(
                 self.requester.send_request(
-                    auth_command(userId=self.username).to_xml()
-                ),
-                self._dispatch_table.get("AuthenticationResponse"),
+                    self._dispatch_table.get("AuthenticationRequest")(userId=self.username).to_xml()
+                )
             )
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
+            
             signed_password = (
                 hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
                 .hexdigest()
                 .lower()
             )
 
-            login_command = self._dispatch_table.get("LoginRequest22V5")
-
-            login_resp = Parser.to_class_from_xml(
+            login_resp = self._receive_response(
                 self.requester.send_request(
-                    login_command(userId=self.username, password=self.password).to_xml()
-                ),
-                self._dispatch_table.get("LoginResponse22V5"),
+                    self._dispatch_table.get("LoginRequest22V5")(userId=self.username, signedPassword=signed_password).to_xml()
+                )
             )
+
+            if isinstance(login_resp, BWKSErrorResponse):
+                raise THError(f"Invalid session parameters: {login_resp.summary}")
+
         except Exception as e:
             self.logger.error(f"Failed to authenticate: {e}")
             raise THError(f"Failed to authenticate: {e}")
@@ -226,20 +222,29 @@ class Client(BaseClient):
         self.authenticated = True
         return login_resp
 
-    def _receive_response(self, response: RequesterResponse) -> BWKSCommand:
+    def _receive_response( self, response: Union[tuple | str] ) -> BWKSCommand:
         """Receives response from requester and returns BWKSCommand"""
-        if not response.success:
-            raise THError(f"Request failed: {response.error_message}")
 
-        response_class = self._dispatch_table.get(response.command_name)
+        # Extract Typename From Raw Response
+        type_name: str = Parser.to_dict_from_xml( response ).get( "command" ).get( "attributes" ).get( "{http://www.w3.org/2001/XMLSchema-instance}type" )
+
+        # Validate Typename Extraction
+        if not type_name:
+            raise THError( f"Failed to parse response object" )
+        
+        # Remove Namespace From Typename
+        if type_name.__contains__( ":" ):
+            type_name = type_name.split( ":", 1)[ 1 ]
+
+        # Cache Response Class        
+        response_class = self._dispatch_table.get( f"{type_name}" )
+
+        # Validate Response Class Instantiation
         if not response_class:
-            self.logger.error(
-                f"Response class {response.command_name} not found in dispatch table"
-            )
-            raise THErrorResponse(
-                f"Response class {response.command_name} not found in dispatch table"
-            )
-        return response_class.from_xml(response.value)
+            raise THError( f"Failed To Find Raw Response Type: { type_name }" )
+        
+        # Construct Response Class With Raw Response
+        return response_class.from_xml( response )
 
 
 class AsyncClient(BaseClient):
@@ -348,17 +353,17 @@ class AsyncClient(BaseClient):
         self.authenticated = True
         return login_resp
 
-    def _receive_response(self, response: RequesterResponse) -> BWKSCommand:
+    def _receive_response(self, response: Union[RequesterResponse | str]) -> BWKSCommand:
         """Receives response from requester and returns BWKSCommand"""
-        if not response.success:
-            raise THError(f"Request failed: {response.error_message}")
+        # if not response.success:
+        #     raise THError(f"Request failed: {response.error_message}")
 
-        response_class = self._dispatch_table.get(response.command_name)
-        if not response_class:
-            self.logger.error(
-                f"Response class {response.command_name} not found in dispatch table"
-            )
-            raise THErrorResponse(
-                f"Response class {response.command_name} not found in dispatch table"
-            )
-        return response_class.from_xml(response.value)
+        # response_class = self._dispatch_table.get(response.command_name)
+        # if not response_class:
+        #     self.logger.error(
+        #         f"Response class {response.command_name} not found in dispatch table"
+        #     )
+        #     raise THErrorResponse(
+        #         f"Response class {response.command_name} not found in dispatch table"
+        #     )
+        # return response_class.from_xml(response.value)
