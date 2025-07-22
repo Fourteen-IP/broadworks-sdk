@@ -96,7 +96,16 @@ class THErrorSocketTimeout(THError):
 @attr.s(slots=True, frozen=True)
 class THErrorSendRequestFailed(THError):
     """
-    Exception raised when the TCP socket fails to initiate.
+    Exception raised when a requester send request command fails.
+    """
+
+    pass
+
+
+@attr.s(slots=True, frozen=True)
+class THErrorClientInitialisation(THError):
+    """
+    Exception raised when the SOAP Client fails to initiate.
     """
 
     pass

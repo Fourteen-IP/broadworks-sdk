@@ -7,13 +7,12 @@ import inspect
 from abc import ABC, abstractmethod
 
 from commands import oci_types, oci_requests, oci_responses
-from commands.oci_requests import AuthenticationRequest
 from commands.base_command import OCICommand as BWKSCommand
 from commands.base_command import ErrorResponse as BWKSErrorResponse
 from commands.base_command import SuccessResponse as BWKSSucessResponse
 from requester import create_requester
 from libs.response import RequesterResponse
-from exceptions import THError, THErrorResponse
+from exceptions import THError
 from utils.parser import Parser
 
 import attr
@@ -39,7 +38,7 @@ class BaseClient(ABC):
     username: str = attr.ib()
     password: str = attr.ib()
     conn_type: str = attr.ib(
-        default="TCP", validator=attr.validators.in_(["TCP", "SOAP"])
+        default="SOAP", validator=attr.validators.in_(["TCP", "SOAP"])
     )
     user_agent: str = attr.ib(default="Thor's Hammer")
     timeout: int = attr.ib(default=30)
@@ -194,12 +193,14 @@ class Client(BaseClient):
         try:
             auth_resp = self._receive_response(
                 self.requester.send_request(
-                    self._dispatch_table.get("AuthenticationRequest")(userId=self.username).to_xml()
+                    self._dispatch_table.get("AuthenticationRequest")(
+                        userId=self.username
+                    ).to_xml()
                 )
             )
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
-            
+
             signed_password = (
                 hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
                 .hexdigest()
@@ -208,7 +209,9 @@ class Client(BaseClient):
 
             login_resp = self._receive_response(
                 self.requester.send_request(
-                    self._dispatch_table.get("LoginRequest22V5")(userId=self.username, signedPassword=signed_password).to_xml()
+                    self._dispatch_table.get("LoginRequest22V5")(
+                        userId=self.username, signedPassword=signed_password
+                    ).to_xml()
                 )
             )
 
@@ -222,32 +225,37 @@ class Client(BaseClient):
         self.authenticated = True
         return login_resp
 
-    def _receive_response( self, response: Union[tuple | str] ) -> BWKSCommand:
+    def _receive_response(self, response: Union[tuple | str]) -> BWKSCommand:
         """Receives response from requester and returns BWKSCommand"""
 
         if isinstance(response, tuple):
             raise response[0](response[1])
 
         # Extract Typename From Raw Response
-        type_name: str = Parser.to_dict_from_xml( response ).get( "command" ).get( "attributes" ).get( "{http://www.w3.org/2001/XMLSchema-instance}type" )
+        type_name: str = (
+            Parser.to_dict_from_xml(response)
+            .get("command")
+            .get("attributes")
+            .get("{http://www.w3.org/2001/XMLSchema-instance}type")
+        )
 
         # Validate Typename Extraction
         if not type_name:
-            raise THError( f"Failed to parse response object" )
-        
-        # Remove Namespace From Typename
-        if type_name.__contains__( ":" ):
-            type_name = type_name.split( ":", 1)[ 1 ]
+            raise THError("Failed to parse response object")
 
-        # Cache Response Class        
-        response_class = self._dispatch_table.get( f"{type_name}" )
+        # Remove Namespace From Typename
+        if type_name.__contains__(":"):
+            type_name = type_name.split(":", 1)[1]
+
+        # Cache Response Class
+        response_class = self._dispatch_table.get(f"{type_name}")
 
         # Validate Response Class Instantiation
         if not response_class:
-            raise THError( f"Failed To Find Raw Response Type: { type_name }" )
-        
+            raise THError(f"Failed To Find Raw Response Type: { type_name }")
+
         # Construct Response Class With Raw Response
-        return response_class.from_xml( response )
+        return response_class.from_xml(response)
 
 
 class AsyncClient(BaseClient):
@@ -356,7 +364,9 @@ class AsyncClient(BaseClient):
         self.authenticated = True
         return login_resp
 
-    def _receive_response(self, response: Union[RequesterResponse | str]) -> BWKSCommand:
+    def _receive_response(
+        self, response: Union[RequesterResponse | str]
+    ) -> BWKSCommand:
         """Receives response from requester and returns BWKSCommand"""
         # if not response.success:
         #     raise THError(f"Request failed: {response.error_message}")
