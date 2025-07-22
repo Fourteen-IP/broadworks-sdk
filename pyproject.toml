@@ -48,6 +48,7 @@ dependencies = [
 dev = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.6.15",
+    "mkdocstrings[python]>=0.29.1",
     "pymdown-extensions>=10.16",
     "pytest>=8.3.4",
     "ruff>=0.8.1",
