@@ -18,7 +18,6 @@ from utils.parser import Parser
 
 import attr
 
-
 @attr.s(slots=True, kw_only=True)
 class BaseClient(ABC):
     """Base class for all clients
