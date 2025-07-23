@@ -1,8 +1,8 @@
-name: ci
+name: docs
 on:
-    release:
-      types: [published]
-    workflow_dispatch:
+  push:
+    branches:
+      - main
 permissions:
   contents: write
 jobs:
@@ -24,5 +24,10 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
-      - run: pip install mkdocs-material
+      - name: Install Dependencies
+        run: |
+          pip install mkdocs==1.6.1
+          pip install mkdocs-material==9.6.15
+          pip install mkdocstrings[python]==0.29.1
+          pip install pymdown-extensions==10.6
       - run: mkdocs gh-deploy --force
