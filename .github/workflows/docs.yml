@@ -30,4 +30,4 @@ jobs:
           pip install mkdocs-material==9.6.15
           pip install mkdocstrings[python]==0.29.1
           pip install pymdown-extensions==10.6
-      - run: mkdocs gh-deploy --force
+      - run: mkdocs build --site-dir docs
