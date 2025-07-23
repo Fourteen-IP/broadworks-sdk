@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://fourteen-ip.github.io/thors-hammer/</loc>
+         <lastmod>2025-07-23</lastmod>
+    </url>
+    <url>
+         <loc>https://fourteen-ip.github.io/thors-hammer/utilities/</loc>
+         <lastmod>2025-07-23</lastmod>
+    </url>
+    <url>
+         <loc>https://fourteen-ip.github.io/thors-hammer/agent/agent/</loc>
+         <lastmod>2025-07-23</lastmod>
+    </url>
+    <url>
+         <loc>https://fourteen-ip.github.io/thors-hammer/agent/automations/find-alias/</loc>
+         <lastmod>2025-07-23</lastmod>
+    </url>
+    <url>
+         <loc>https://fourteen-ip.github.io/thors-hammer/agent/bulk-operations/users/</loc>
+         <lastmod>2025-07-23</lastmod>
+    </url>
+    <url>
+         <loc>https://fourteen-ip.github.io/thors-hammer/client/async-client/</loc>
+         <lastmod>2025-07-23</lastmod>
+    </url>
+    <url>
+         <loc>https://fourteen-ip.github.io/thors-hammer/client/client/</loc>
+         <lastmod>2025-07-23</lastmod>
+    </url>
+    <url>
+         <loc>https://fourteen-ip.github.io/thors-hammer/commands/commands/</loc>
+         <lastmod>2025-07-23</lastmod>
+    </url>
+</urlset>
