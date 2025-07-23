@@ -13,7 +13,7 @@ from exceptions import (
     THErrorSocketTimeout,
     THErrorClientInitialisation,
 )
-from typing import Any
+from typing import Any, Union, Tuple
 from commands.base_command import OCICommand as BroadworksCommand
 from abc import ABC, abstractmethod
 
@@ -133,7 +133,9 @@ class SyncTCPRequester(BaseRequester):
             finally:
                 self.sock = None
 
-    def send_request(self, command: BroadworksCommand) -> Any:
+    def send_request(
+        self, command: BroadworksCommand
+    ) -> Union[str, Tuple[Exception, Exception]]:
         """Sends a request to the server.
 
         Args:
@@ -143,8 +145,10 @@ class SyncTCPRequester(BaseRequester):
             Any: The response from the server.
         """
         try:
-            if self.sock is None:
-                self.connect()
+            if self.sock is None and isinstance(
+                (connection := self.connect()), tuple
+            ):  # If it returns the exception tuple, we return it again
+                return connection
 
             command_bytes = (
                 "<?xml version='1.0' encoding='ISO-8859-1'?>"
@@ -154,7 +158,7 @@ class SyncTCPRequester(BaseRequester):
                 "</BroadsoftDocument>"
             )
 
-            command_bytes = command_bytes.encode("utf-8")
+            command_bytes = command_bytes.encode("ISO-8859-1")
 
             self.sock.sendall(command_bytes + b"\0")
 
@@ -235,13 +239,15 @@ class SyncSOAPRequester(BaseRequester):
                 self.client.close()
             except Exception as e:
                 self.logger.warning(
-                    f"Exception: {e} was raised when attemping to close {self.__class__.__name__}, but was ignored."
+                    f"Exception: {e} was raised when attempting to close {self.__class__.__name__}, but was ignored."
                 )
                 pass
             finally:
                 self.client = None
 
-    def send_request(self, command: BroadworksCommand) -> Any:
+    def send_request(
+        self, command: BroadworksCommand
+    ) -> Union[str, Tuple[Exception, Exception]]:
         """Sends a request to the server.
 
         Args:
@@ -349,7 +355,9 @@ class AsyncTCPRequester(BaseRequester):
                 self.writer = None
                 self.reader = None
 
-    async def send_request(self, command: BroadworksCommand) -> Any:
+    async def send_request(
+        self, command: BroadworksCommand
+    ) -> Union[str, Tuple[Exception, Exception]]:
         """Sends a request to the server.
 
         Args:
