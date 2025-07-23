@@ -67,3 +67,10 @@
 - Still need to add tests to the library which will start with the client class. 
 - Still need to add documentation to the library.
 
+@KiPageFault 22.07.2025
+- Added Parser class designed for Type/Request/Response type translation between class objects, xml, and dictionaries.
+- Added OCI base classes to encapsulate Type/Request/Response objects and provide parser utility.
+- Finalised Client _receive_response in accordance with Requester object. It is designed to take a raw string on a successful response or \
+  a tuple object containing an exception object and message.
+- All above implementations require documentaiton.
+

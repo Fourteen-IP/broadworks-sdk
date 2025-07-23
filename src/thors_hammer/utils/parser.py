@@ -5,39 +5,18 @@ import xml.etree.ElementTree as ET
 from typing import get_type_hints, List, get_args, Union, Type
 
 class Parser:
-    # @staticmethod
-    # def to_xml_from_class(obj: object) -> str:
-    #     def serialize_value(parent, tag, value):
-    #         if type(value).__name__ == "OCIType":
-    #         # if isinstance(value, OCIType):
-    #             child = ET.SubElement(parent, tag)
-    #             data = Parser.to_dict_from_class(value)
-    #             for k, v in data.items():
-    #                 if v is not None:
-    #                     ET.SubElement(child, k).text = str(v)
-    #         else:
-    #             ET.SubElement(parent, tag).text = str(value)
-
-    #     root_tag = obj.__class__.__name__
-    #     root = ET.Element(root_tag, xmlns=obj.namespace)
-
-    #     type_hints = get_type_hints(obj.__class__)
-    #     for attr, hint in type_hints.items():
-    #         value = getattr(obj, attr, None)
-    #         if value is None:
-    #             continue
-
-    #         args = get_args(hint)
-    #         if args:
-    #             origin = getattr(hint, '__origin__', None)
-    #             if origin in (list, List):
-    #                 for item in value:
-    #                     serialize_value(root, attr, item)
-    #                 continue
-
-    #         serialize_value(root, attr, value)
-
-    #     return ET.tostring(root, encoding="utf-8", xml_declaration=False).decode("utf-8")
+    """
+    Base Class For OCI Object Parsing & Type Translation
+    
+    method table:
+    
+    - to_xml_from_class: Translates class object to xml
+    - to_xml_from_dict: Translates dictionary object to xml
+    - to_dict_from_class: Translates class object to dictionary
+    - to_dict_from_xml: Translates xml into dictionary 
+    - to_class_from_dict: Translates dictionary object to class
+    - to_class_from_xml: Translates xml to class
+    """
     
     @staticmethod
     def to_xml_from_class(obj: object) -> str:
@@ -55,7 +34,7 @@ class Parser:
             "command",
             attrib={
                 "xmlns": "",
-                "xsi:type": obj.__class__.__name__,
+                "{http://www.w3.org/2001/XMLSchema-instance}type": obj.__class__.__name__,
             }
         )
 
@@ -109,12 +88,29 @@ class Parser:
             xml = ET.fromstring(xml)
 
         result = {}
-        for child in xml:
-            # Handle nested elements
-            if len(child):
-                result[child.tag] = Parser.to_dict_from_xml(child)
+
+        if xml.attrib:
+            result["attributes"] = dict(xml.attrib)
+
+        children = list(xml)
+        if children:
+            for child in children:
+                child_dict = Parser.to_dict_from_xml(child)
+
+                if child.tag in result:
+                    if isinstance(result[child.tag], list):
+                        result[child.tag].append(child_dict)
+                    else:
+                        result[child.tag] = [result[child.tag], child_dict]
+                else:
+                    result[child.tag] = child_dict
+        else:
+            text = xml.text.strip() if xml.text else ""
+            if result:
+                result["text"] = text
             else:
-                result[child.tag] = child.text
+                result = text
+
         return result
 
     @staticmethod
