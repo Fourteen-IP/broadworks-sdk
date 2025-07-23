@@ -17,6 +17,7 @@ from utils.parser import Parser
 
 import attr
 
+
 @attr.s(slots=True, kw_only=True)
 class BaseClient(ABC):
     """Base class for all clients
@@ -87,6 +88,13 @@ class BaseClient(ABC):
     def _receive_response(self, response: RequesterResponse) -> BWKSCommand:
         """Receives response from requester and returns BWKSCommand"""
         pass
+
+    def disconnect(self):
+        """Disconnects from the server
+
+        Call this method at the end of your program to disconnect from the server.
+        """
+        self.requester.disconnect()
 
     def _set_up_dispatch_table(self):
         """Set up the dispatch table for the client"""
