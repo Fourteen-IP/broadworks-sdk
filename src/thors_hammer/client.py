@@ -17,6 +17,7 @@ from utils.parser import Parser
 
 import attr
 
+
 @attr.s(slots=True, kw_only=True)
 class BaseClient(ABC):
     """Base class for all clients
@@ -110,6 +111,38 @@ class BaseClient(ABC):
         logger.addHandler(console_handler)
 
         return logger
+
+    def _receive_response(self, response: Union[tuple | str]) -> BWKSCommand:
+        """Receives response from requester and returns BWKSCommand"""
+
+        if isinstance(response, tuple):
+            raise response[0](response[1])
+
+        # Extract Typename From Raw Response
+        type_name: str = (
+            Parser.to_dict_from_xml(response)
+            .get("command")
+            .get("attributes")
+            .get("{http://www.w3.org/2001/XMLSchema-instance}type")
+        )
+
+        # Validate Typename Extraction
+        if not type_name:
+            raise THError("Failed to parse response object")
+
+        # Remove Namespace From Typename
+        if type_name.__contains__(":"):
+            type_name = type_name.split(":", 1)[1]
+
+        # Cache Response Class
+        response_class = self._dispatch_table.get(f"{type_name}")
+
+        # Validate Response Class Instantiation
+        if not response_class:
+            raise THError(f"Failed To Find Raw Response Type: { type_name }")
+
+        # Construct Response Class With Raw Response
+        return response_class.from_xml(response)
 
 
 class Client(BaseClient):
@@ -224,38 +257,6 @@ class Client(BaseClient):
         self.authenticated = True
         return login_resp
 
-    def _receive_response(self, response: Union[tuple | str]) -> BWKSCommand:
-        """Receives response from requester and returns BWKSCommand"""
-
-        if isinstance(response, tuple):
-            raise response[0](response[1])
-
-        # Extract Typename From Raw Response
-        type_name: str = (
-            Parser.to_dict_from_xml(response)
-            .get("command")
-            .get("attributes")
-            .get("{http://www.w3.org/2001/XMLSchema-instance}type")
-        )
-
-        # Validate Typename Extraction
-        if not type_name:
-            raise THError("Failed to parse response object")
-
-        # Remove Namespace From Typename
-        if type_name.__contains__(":"):
-            type_name = type_name.split(":", 1)[1]
-
-        # Cache Response Class
-        response_class = self._dispatch_table.get(f"{type_name}")
-
-        # Validate Response Class Instantiation
-        if not response_class:
-            raise THError(f"Failed To Find Raw Response Type: { type_name }")
-
-        # Construct Response Class With Raw Response
-        return response_class.from_xml(response)
-
 
 class AsyncClient(BaseClient):
     """Asycn version of Client.
@@ -362,20 +363,3 @@ class AsyncClient(BaseClient):
         self.logger.info("Authenticated with server")
         self.authenticated = True
         return login_resp
-
-    def _receive_response(
-        self, response: Union[RequesterResponse | str]
-    ) -> BWKSCommand:
-        """Receives response from requester and returns BWKSCommand"""
-        # if not response.success:
-        #     raise THError(f"Request failed: {response.error_message}")
-
-        # response_class = self._dispatch_table.get(response.command_name)
-        # if not response_class:
-        #     self.logger.error(
-        #         f"Response class {response.command_name} not found in dispatch table"
-        #     )
-        #     raise THErrorResponse(
-        #         f"Response class {response.command_name} not found in dispatch table"
-        #     )
-        # return response_class.from_xml(response.value)
