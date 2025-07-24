@@ -157,6 +157,8 @@ class AsyncParser:
     """
     Base Class For Async OCI Object Parsing & Type Translation
 
+    It is doing the exact same thing as Parser, except adding each call onto the event loop.
+
     method table:
 
     - to_xml_from_class: Translates class object to xml

@@ -1,5 +1,4 @@
 # this will be resposnsible for sending and receiving data from the API
-import httpx
 import asyncio
 import socket
 import requests
@@ -8,13 +7,17 @@ import select
 import logging
 from lxml import etree, builder
 from zeep import Client, Settings, Transport
+from zeep import AsyncClient as AsyncClientZeep
+from zeep.transports import AsyncTransport
+from httpx import AsyncClient as AsyncClientHttpx
+from httpx import Client as ClientHttpx
 from exceptions import (
     THErrorSocketInitialisation,
     THErrorSendRequestFailed,
     THErrorSocketTimeout,
     THErrorClientInitialisation,
 )
-from typing import Any, Union, Tuple, Coroutine
+from typing import Union, Tuple, Coroutine
 from commands.base_command import OCICommand as BroadworksCommand
 from abc import ABC, abstractmethod
 
@@ -436,22 +439,47 @@ class AsyncSOAPRequester(BaseRequester):
     """
 
     def __init__(
-        self, logger: logging.Logger, host: str, port: int = 2209, timeout: int = 10
+        self,
+        session_id: str,
+        logger: logging.Logger,
+        host: str,
+        port: int = 2209,
+        timeout: int = 10,
     ):
-        super().__init__(logger=logger, host=host, port=port, timeout=timeout)
-        self.client = None
+        self.async_client = None
+        self.wsdl_client = None
+        self.zeep_client = None
+        super().__init__(
+            logger=logger, host=host, port=port, timeout=timeout, session_id=session_id
+        )
 
-    def connect(self):
+    async def connect(self):
         """Connects to the server."""
-        if self.client is None:
-            try:
-                self.client = httpx.Client(timeout=self.timeout)
-            except Exception as e:
-                self.logger.error(
-                    f"Failed to initiate client on {self.__class__.__name__}: {e}"
-                )
+        if None not in (self.async_client, self.wsdl_client, self.zeep_client):
+            pass
+        try:
+            self.async_client = AsyncClientHttpx()
+            self.wsdl_client = ClientHttpx()
+            # Zeep fetches the WSDL synchronously, but actual requests are synchronous, so we must have a Sync and Async Httpx Client.
 
-    def disconnect(self):
+            settings = Settings(strict=False, xml_huge_tree=True)
+            transport = AsyncTransport(
+                client=self.async_client,
+                wsdl_client=self.wsdl_client,
+                timeout=self.timeout,
+            )
+
+            self.zeep_client = AsyncClientZeep(
+                wsdl=f"{self.host}?wsdl", transport=transport, settings=settings
+            )
+
+        except Exception as e:
+            self.logger.error(
+                f"Failed to initiate client on {self.__class__.__name__}: {e}"
+            )
+            return (THErrorClientInitialisation, e)
+
+    async def disconnect(self):
         """Disconnects from the server."""
         if self.client:
             try:
@@ -464,7 +492,9 @@ class AsyncSOAPRequester(BaseRequester):
             finally:
                 self.client = None
 
-    async def send_request(self, command: BroadworksCommand) -> Any:
+    async def send_request(
+        self, command: BroadworksCommand
+    ) -> Union[str, Tuple[Exception, Exception]]:
         """Sends a request to the server.
 
         Args:
@@ -473,26 +503,24 @@ class AsyncSOAPRequester(BaseRequester):
         Returns:
             Any: The response from the server.
         """
-        try:
-            headers = {"Content-Type": "text/xml; charset=utf-8", "SOAPAction": ""}
+        if None in (self.async_client, self.wsdl_client, self.zeep_client):
+            connection = await self.connect()
+            if isinstance(connection, tuple):
+                return connection
 
-            response_cor = await self.client.post(
-                self.url, headers=headers, data=command
+        command = await command
+
+        try:
+            response = await self.zeep_client.service.processOCIMessage(
+                self.build_oci_xml(command)
             )
 
-            response = await asyncio.gather(response_cor)
-
-            await self.client.aclose()
-
-            return response.text
+            return response
         except Exception as e:
             self.logger.error(
                 f"Failed to send command over {self.__class__.__name__}: {e}"
             )
-            return None
-
-    def __del__(self):
-        self.disconnect()
+            return (THErrorSendRequestFailed, e)
 
 
 def create_requester(

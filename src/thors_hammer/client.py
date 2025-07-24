@@ -38,7 +38,7 @@ class BaseClient(ABC):
     username: str = attr.ib()
     password: str = attr.ib()
     conn_type: str = attr.ib(
-        default="TCP", validator=attr.validators.in_(["TCP", "SOAP"])
+        default="SOAP", validator=attr.validators.in_(["TCP", "SOAP"])
     )
     user_agent: str = attr.ib(default="Thor's Hammer")
     timeout: int = attr.ib(default=30)
