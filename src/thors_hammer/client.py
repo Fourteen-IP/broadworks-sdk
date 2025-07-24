@@ -2,7 +2,7 @@ import sys
 import logging
 import hashlib
 import uuid
-from typing import Dict, Type, Union
+from typing import Dict, Type, Union, Coroutine
 import inspect
 from abc import ABC, abstractmethod
 
@@ -13,9 +13,10 @@ from commands.base_command import SuccessResponse as BWKSSucessResponse
 from requester import create_requester
 from libs.response import RequesterResponse
 from exceptions import THError
-from utils.parser import Parser
+from utils.parser import Parser, AsyncParser
 
 import attr
+
 
 @attr.s(slots=True, kw_only=True)
 class BaseClient(ABC):
@@ -37,7 +38,7 @@ class BaseClient(ABC):
     username: str = attr.ib()
     password: str = attr.ib()
     conn_type: str = attr.ib(
-        default="SOAP", validator=attr.validators.in_(["TCP", "SOAP"])
+        default="TCP", validator=attr.validators.in_(["TCP", "SOAP"])
     )
     user_agent: str = attr.ib(default="Thor's Hammer")
     timeout: int = attr.ib(default=30)
@@ -60,7 +61,8 @@ class BaseClient(ABC):
             logger=self.logger,
             session_id=self.session_id,
         )
-        self.authenticate()
+        if not self.async_mode:
+            self.authenticate()
 
     @property
     @abstractmethod
@@ -258,7 +260,7 @@ class Client(BaseClient):
 
 
 class AsyncClient(BaseClient):
-    """Asycn version of Client.
+    """Async version of Client.
 
     Note: Performs the same functions as Client, but in an asynchronous manner.
 
@@ -280,6 +282,9 @@ class AsyncClient(BaseClient):
         Exception: If the client fails to authenticate
     """
 
+    def __attrs_post_init__(self):
+        super().__attrs_post_init__()
+
     @property
     def async_mode(self) -> bool:
         return True
@@ -299,7 +304,7 @@ class AsyncClient(BaseClient):
             await self.authenticate()
         self.logger.info(f"Executing command: {command.__class__.__name__}")
         self.logger.debug(f"Command: {command.to_dict()}")
-        response = await self.requester.send_request(command.to_xml())
+        response = await self.requester.send_request(command.to_xml_async())
         return self._receive_response(response)
 
     async def raw_command(self, command: str, **kwargs) -> BWKSCommand:
@@ -338,24 +343,32 @@ class AsyncClient(BaseClient):
         if self.authenticated:
             return
         try:
-            auth_command = self._dispatch_table.get("AuthenticationRequest")
-            auth_resp = await self.requester.send_request(
-                auth_command(user_id=self.username).to_xml()
+            auth_resp = await self._receive_response(
+                self.requester.send_request(
+                    self._dispatch_table.get("AuthenticationRequest")(
+                        userId=self.username
+                    ).to_xml_async()
+                )
             )
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
+
             signed_password = (
                 hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
                 .hexdigest()
                 .lower()
             )
 
-            login_command = self._dispatch_table.get("LoginResponse22V5")
-            login_resp = await self.requester.send_request(
-                login_command(
-                    user_id=self.username, signed_password=signed_password
-                ).to_xml()
+            login_resp = await self._receive_response(
+                self.requester.send_request(
+                    self._dispatch_table.get("LoginRequest22V5")(
+                        userId=self.username, signedPassword=signed_password
+                    ).to_xml_async()
+                )
             )
+
+            if isinstance(login_resp, BWKSErrorResponse):
+                raise THError(f"Invalid session parameters: {login_resp.summary}")
         except Exception as e:
             self.logger.error(f"Failed to authenticate: {e}")
             raise THError(f"Failed to authenticate: {e}")
@@ -363,19 +376,35 @@ class AsyncClient(BaseClient):
         self.authenticated = True
         return login_resp
 
-    def _receive_response(
-        self, response: Union[RequesterResponse | str]
-    ) -> BWKSCommand:
-        """Receives response from requester and returns BWKSCommand"""
-        # if not response.success:
-        #     raise THError(f"Request failed: {response.error_message}")
+    async def _receive_response(self, response: Coroutine):
+        response = await response
 
-        # response_class = self._dispatch_table.get(response.command_name)
-        # if not response_class:
-        #     self.logger.error(
-        #         f"Response class {response.command_name} not found in dispatch table"
-        #     )
-        #     raise THErrorResponse(
-        #         f"Response class {response.command_name} not found in dispatch table"
-        #     )
-        # return response_class.from_xml(response.value)
+        if isinstance(response, tuple):
+            raise response[0](response[1])
+
+        response_dict = await AsyncParser.to_dict_from_xml(response)
+
+        # Extract Typename From Raw Response
+        type_name: str = (
+            response_dict.get("command")
+            .get("attributes")
+            .get("{http://www.w3.org/2001/XMLSchema-instance}type")
+        )
+
+        # Validate Typename Extraction
+        if not type_name:
+            raise THError("Failed to parse response object")
+
+        # Remove Namespace From Typename
+        if type_name.__contains__(":"):
+            type_name = type_name.split(":", 1)[1]
+
+        # Cache Response Class
+        response_class = self._dispatch_table.get(f"{type_name}")
+
+        # Validate Response Class Instantiation
+        if not response_class:
+            raise THError(f"Failed To Find Raw Response Type: { type_name }")
+
+        # Construct Response Class With Raw Response
+        return await response_class.from_xml_async(response)
