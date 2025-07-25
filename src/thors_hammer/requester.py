@@ -1,23 +1,26 @@
-# this will be resposnsible for sending and receiving data from the API
+import asyncio
 import socket
+import requests
 import ssl
 import select
 import logging
 from abc import ABC, abstractmethod
-import xml.etree.ElementTree as ET
-from typing import Any, Union, Tuple
+from typing import Union, Tuple
 
-from thors_hammer.commands.base_command import OCICommand as BroadworksCommand
 from thors_hammer.exceptions import (
     THErrorSocketInitialisation,
     THErrorSendRequestFailed,
     THErrorSocketTimeout,
     THErrorClientInitialisation,
 )
+from thors_hammer.commands.base_command import OCICommand as BroadworksCommand
 
-from html import unescape
-import httpx 
-import asyncio
+from lxml import etree, builder
+from zeep import Client, Settings, Transport
+from zeep import AsyncClient as AsyncClientZeep
+from zeep.transports import AsyncTransport
+from httpx import AsyncClient as AsyncClientHttpx
+from httpx import Client as ClientHttpx
 
 class BaseRequester(ABC):
     """Base class for all requesters.
@@ -37,15 +40,19 @@ class BaseRequester(ABC):
         port: int,
         timeout: int,
         session_id: str,
+        ssl: bool,
     ):
         self.logger = logger
         self.host = host
         self.port = port
         self.timeout = timeout
         self.session_id = session_id
+        self.ssl = ssl
 
     @abstractmethod
-    def send_request(self, command: BroadworksCommand) -> Any:
+    def send_request(
+        self, command: BroadworksCommand
+    ) -> Union[str, Tuple[Exception, Exception]]:
         """Sends a request to the server.
 
         Args:
@@ -62,6 +69,37 @@ class BaseRequester(ABC):
     def disconnect(self):
         """Disconnects from the server."""
         pass
+
+    def build_oci_xml(self, command: BroadworksCommand) -> bytes:
+        """Builds an OCI XML request from the given BroadworksCommand.
+
+        Constructs an XML document with a session ID and the encoded command,
+        wrapped in a BroadsoftDocument element with the OCI protocol.
+
+        Args:
+            command (BroadworksCommand): The command to be encoded into the XML.
+
+        Returns:
+            bytes: The serialized XML document as bytes, encoded with ISO-8859-1.
+        """
+
+        ElementMaker = builder.ElementMaker(
+            namespace="C",
+            nsmap={None: "C", "xsi": "http://www.w3.org/2001/XMLSchema-instance"},
+        )
+
+        session_id = etree.Element("sessionId")
+        session_id.text = str(self.session_id)
+
+        command = etree.fromstring(command.encode("ISO-8859-1"))
+
+        broadsoft_doc = ElementMaker.BroadsoftDocument(
+            session_id, command, protocol="OCI"
+        )
+
+        return etree.tostring(
+            broadsoft_doc, xml_declaration=True, encoding="ISO-8859-1"
+        )
 
     def __del__(self):
         self.disconnect()
@@ -89,10 +127,16 @@ class SyncTCPRequester(BaseRequester):
         port: int = 2209,
         timeout: int = 30,
         session_id: str = None,
+        ssl: bool = True,
     ):
         self.sock = None
         super().__init__(
-            logger=logger, host=host, port=port, timeout=timeout, session_id=session_id
+            logger=logger,
+            host=host,
+            port=port,
+            timeout=timeout,
+            session_id=session_id,
+            ssl=ssl,
         )
         self.connect()
 
@@ -105,13 +149,13 @@ class SyncTCPRequester(BaseRequester):
         """
         if self.sock is None:
             try:
-                if self.port == 2209:  # SSL
+                if self.ssl:
                     raw_sock = socket.create_connection(
                         (self.host, self.port), timeout=self.timeout
                     )
                     context = ssl.create_default_context()
                     self.sock = context.wrap_socket(raw_sock, server_hostname=self.host)
-                elif self.port == 2208:
+                else:
                     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.sock.settimeout(self.timeout)
                     self.sock.connect((self.host, self.port))
@@ -120,6 +164,10 @@ class SyncTCPRequester(BaseRequester):
                     f"Failed to initiate socket on {self.__class__.__name__}: {e}"
                 )
                 return (THErrorSocketInitialisation, e)
+            finally:
+                self.logger.info(
+                    f"Initiated socket on {self.__class__.__name__}: {self.host}:{self.port}"
+                )
 
     def disconnect(self):
         """Disconnects from the server."""
@@ -151,15 +199,7 @@ class SyncTCPRequester(BaseRequester):
             ):  # If it returns the exception tuple, we return it again
                 return connection
 
-            command_bytes = (
-                "<?xml version='1.0' encoding='ISO-8859-1'?>"
-                '<BroadsoftDocument xmlns="C" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" protocol="OCI">'
-                f'<sessionId xmlns="">{self.session_id}</sessionId>'
-                f"{command}"
-                "</BroadsoftDocument>"
-            )
-
-            command_bytes = command_bytes.encode("ISO-8859-1")
+            command_bytes = self.build_oci_xml(command)
 
             self.sock.sendall(command_bytes + b"\0")
 
@@ -177,7 +217,7 @@ class SyncTCPRequester(BaseRequester):
                 if b"</BroadsoftDocument>" in content:
                     break
 
-            return content.rstrip(b"\0").decode("utf-8")
+            return content.rstrip(b"\0").decode("ISO-8859-1")
         except socket.timeout as e:
             self.logger.error(f"Socket timed out: {self.__class__.__name__}: {e}")
             return (THErrorSocketTimeout, e)
@@ -210,10 +250,17 @@ class SyncSOAPRequester(BaseRequester):
         port: int = 2209,
         timeout: int = 10,
         session_id: str = None,
+        ssl: bool = True,
     ):
         self.client = None
+        self.zclient = None
         super().__init__(
-            logger=logger, host=host, port=port, timeout=timeout, session_id=session_id
+            logger=logger,
+            host=host,
+            port=port,
+            timeout=timeout,
+            session_id=session_id,
+            ssl=ssl,
         )
         self.connect()
 
@@ -226,7 +273,15 @@ class SyncSOAPRequester(BaseRequester):
         """
         if self.client is None:
             try:
-                self.client = httpx.Client(timeout=self.timeout)
+                self.client = requests.sessions.Session()
+                settings = Settings(strict=False, xml_huge_tree=True)
+                transport = Transport(session=self.client, timeout=self.timeout)
+                self.zclient = Client(
+                    wsdl=f"{self.host}?wsdl", transport=transport, settings=settings
+                )
+                self.logger.info(
+                    f"Initiated socket on {self.__class__.__name__}: {self.host}:{self.port}"
+                )
             except Exception as e:
                 self.logger.error(
                     f"Failed to initiate client on {self.__class__.__name__}: {e}"
@@ -258,46 +313,11 @@ class SyncSOAPRequester(BaseRequester):
             Any: The response from the server.
         """
         try:
-            oci_payload = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
-                            <BroadsoftDocument xmlns="C" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" protocol="OCI">
-                                <sessionId xmlns="">{self.session_id}</sessionId>
-                                {command}
-                            </BroadsoftDocument>"""
-
-            soap_envelope = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
-                                <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                                                  xmlns:web="urn:com:broadsoft:webservice">
-                                  <soapenv:Header/>
-                                  <soapenv:Body>
-                                    <web:processOCIMessage>
-                                      <in0><![CDATA[
-                                {oci_payload}
-                                      ]]></in0>
-                                    </web:processOCIMessage>
-                                  </soapenv:Body>
-                                </soapenv:Envelope>"""  # The WSDL for provisioning expects a processOCIMessage action to be wraped in '<in0>'
-
-            headers = {
-                "Content-Type": "text/xml; charset=ISO-8859-1",
-                "SOAPAction": "",
-            }
-
-            response = self.client.post(
-                self.host, headers=headers, data=soap_envelope.encode("ISO-8859-1")
+            response = self.zclient.service.processOCIMessage(
+                self.build_oci_xml(command)
             )
-            response.raise_for_status()
 
-            root = ET.fromstring(response.text)
-
-            encoded_inner = root.find(
-                ".//{urn:com:broadsoft:webservice}processOCIMessageReturn"
-            ).text
-
-            decoded_inner = unescape(
-                encoded_inner.strip()
-            )  # We need to decode some XML Entity Values from the center, this ensures the response remains a proper string, and keeps the XML header as per the spec.
-
-            return ET.fromstring(decoded_inner)
+            return response
         except Exception as e:
             self.logger.error(
                 f"Failed to send command over {self.__class__.__name__}: {e}"
@@ -316,6 +336,7 @@ class AsyncTCPRequester(BaseRequester):
     socket for encrypted traffic.
 
     Args:
+        session_id (str): The session ID passed to keep the session alive.
         logger (logging.Logger): An instance of `logging.Logger` for logging messages.
         host (str): The hostname or IP address of the BroadWorks server.
         port (int): The port for the OCI-P interface, defaults to 2209.
@@ -323,23 +344,51 @@ class AsyncTCPRequester(BaseRequester):
     """
 
     def __init__(
-        self, logger: logging.Logger, host: str, port: int = 2209, timeout: int = 10
+        self,
+        logger: logging.Logger,
+        host: str,
+        port: int = 2209,
+        timeout: int = 10,
+        session_id: str = None,
+        ssl: bool = True,
     ):
-        super().__init__(logger=logger, host=host, port=port, timeout=timeout)
         self.reader = None
         self.writer = None
+        super().__init__(
+            logger=logger,
+            host=host,
+            port=port,
+            timeout=timeout,
+            session_id=session_id,
+            ssl=ssl,
+        )
+        self.connect()
 
     async def connect(self):
         """Connects to the server."""
-        if self.reader and self.writer is None:
+        if self.reader is None and self.writer is None:
             try:
-                self.reader, self.writer = await asyncio.open_connection(
-                    host=self.host, port=self.port
-                )
+                if self.ssl:  # SSL
+                    context = ssl.create_default_context()
+                    self.reader, self.writer = await asyncio.wait_for(
+                        asyncio.open_connection(
+                            host=self.host, port=self.port, ssl=context
+                        ),
+                        timeout=self.timeout,
+                    )
+                    self.logger.info(
+                        f"Initiated socket on {self.__class__.__name__}: {self.host}:{self.port}"
+                    )
+                else:
+                    self.reader, self.writer = await asyncio.wait_for(
+                        asyncio.open_connection(self.host, self.port),
+                        timeout=self.timeout,
+                    )
             except Exception as e:
                 self.logger.error(
                     f"Failed to initiate socket on {self.__class__.__name__}: {e}"
                 )
+                return (THErrorSocketInitialisation, e)
 
     async def disconnect(self):
         """Disconnects from the server."""
@@ -368,20 +417,43 @@ class AsyncTCPRequester(BaseRequester):
             Any: The response from the server.
         """
         try:
-            self.writer.write(command)
+            if self.reader or self.writer is None:
+                result = await self.connect()
+                if isinstance(result, tuple):  # Error returned
+                    return result
+
+            command = await command
+
+            command_bytes = self.build_oci_xml(command)
+            self.writer.write(command_bytes + b"\0")
             await self.writer.drain()
 
-            response = await self.reader.readuntil(b"</BroadsoftDocument>")
+            content = b""
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(
+                        self.reader.read(4096), timeout=self.timeout
+                    )
+                except asyncio.TimeoutError as e:
+                    self.logger.error(
+                        f"Socket read timed out in {self.__class__.__name__}: {e}"
+                    )
+                    return (THErrorSocketTimeout, e)
 
-            return response.decode()
+                if not chunk:
+                    break
+
+                content += chunk
+                if b"</BroadsoftDocument>" in content:
+                    break
+
+            return content.rstrip(b"\0").decode("ISO-8859-1")
+
         except Exception as e:
             self.logger.error(
                 f"Failed to send command over {self.__class__.__name__}: {e}"
             )
-            return None
-
-    def __del__(self):
-        self.disconnect()
+            return (THErrorSendRequestFailed, e)
 
 
 class AsyncSOAPRequester(BaseRequester):
@@ -399,22 +471,54 @@ class AsyncSOAPRequester(BaseRequester):
     """
 
     def __init__(
-        self, logger: logging.Logger, host: str, port: int = 2209, timeout: int = 10
+        self,
+        logger: logging.Logger,
+        host: str,
+        port: int = 2209,
+        timeout: int = 10,
+        session_id: str = None,
+        ssl: bool = True,
     ):
-        super().__init__(logger=logger, host=host, port=port, timeout=timeout)
-        self.client = None
+        self.async_client = None
+        self.wsdl_client = None
+        self.zeep_client = None
+        super().__init__(
+            logger=logger,
+            host=host,
+            port=port,
+            timeout=timeout,
+            session_id=session_id,
+            ssl=ssl,
+        )
+        self.connect()
 
-    def connect(self):
+    async def connect(self):
         """Connects to the server."""
-        if self.client is None:
-            try:
-                self.client = httpx.Client(timeout=self.timeout)
-            except Exception as e:
-                self.logger.error(
-                    f"Failed to initiate client on {self.__class__.__name__}: {e}"
-                )
+        if None not in (self.async_client, self.wsdl_client, self.zeep_client):
+            pass
+        try:
+            self.async_client = AsyncClientHttpx()
+            self.wsdl_client = ClientHttpx()
+            # Zeep fetches the WSDL synchronously, but actual requests are asynchronous, so we must have a Sync and Async Httpx Client.
 
-    def disconnect(self):
+            settings = Settings(strict=False, xml_huge_tree=True)
+            transport = AsyncTransport(
+                client=self.async_client,
+                wsdl_client=self.wsdl_client,
+                timeout=self.timeout,
+            )
+
+            self.zeep_client = AsyncClientZeep(
+                wsdl=f"{self.host}?wsdl", transport=transport, settings=settings
+            )
+
+        except Exception as e:
+            self.logger.error(
+                f"Failed to initiate client on {self.__class__.__name__}: {e}"
+            )
+            return (THErrorClientInitialisation, e)
+
+    async def disconnect(self):
         """Disconnects from the server."""
         if self.client:
             try:
@@ -427,7 +531,9 @@ class AsyncSOAPRequester(BaseRequester):
             finally:
                 self.client = None
 
-    async def send_request(self, command: BroadworksCommand) -> Any:
+    async def send_request(
+        self, command: BroadworksCommand
+    ) -> Union[str, Tuple[Exception, Exception]]:
         """Sends a request to the server.
 
         Args:
@@ -436,26 +542,24 @@ class AsyncSOAPRequester(BaseRequester):
         Returns:
             Any: The response from the server.
         """
-        try:
-            headers = {"Content-Type": "text/xml; charset=utf-8", "SOAPAction": ""}
+        if None in (self.async_client, self.wsdl_client, self.zeep_client):
+            connection = await self.connect()
+            if isinstance(connection, tuple):
+                return connection
 
-            response_cor = await self.client.post(
-                self.url, headers=headers, data=command
+        command = await command
+
+        try:
+            response = await self.zeep_client.service.processOCIMessage(
+                self.build_oci_xml(command)
             )
 
-            response = await asyncio.gather(response_cor)
-
-            await self.client.aclose()
-
-            return response.text
+            return response
         except Exception as e:
             self.logger.error(
                 f"Failed to send command over {self.__class__.__name__}: {e}"
             )
-            return None
-
-    def __del__(self):
-        self.disconnect()
+            return (THErrorSendRequestFailed, e)
 
 
 def create_requester(
@@ -466,6 +570,7 @@ def create_requester(
     conn_type: str = "SOAP",
     async_: bool = True,
     timeout: int = 10,
+    ssl: bool = True,
 ) -> BaseRequester:
     """Factory function to create a requester.
 
@@ -489,6 +594,7 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
+                ssl=ssl,
             )
         else:
             return SyncSOAPRequester(
@@ -497,6 +603,7 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
+                ssl=ssl,
             )
     elif conn_type == "TCP":
         if async_:
@@ -506,6 +613,7 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
+                ssl=ssl,
             )
         else:
             return SyncTCPRequester(
@@ -514,4 +622,5 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
+                ssl=ssl,
             )
