@@ -282,9 +282,6 @@ class AsyncClient(BaseClient):
         Exception: If the client fails to authenticate
     """
 
-    def __attrs_post_init__(self):
-        super().__attrs_post_init__()
-
     @property
     def async_mode(self) -> bool:
         return True

@@ -17,7 +17,7 @@ from exceptions import (
     THErrorSocketTimeout,
     THErrorClientInitialisation,
 )
-from typing import Union, Tuple, Coroutine
+from typing import Union, Tuple
 from commands.base_command import OCICommand as BroadworksCommand
 from abc import ABC, abstractmethod
 
@@ -40,12 +40,14 @@ class BaseRequester(ABC):
         port: int,
         timeout: int,
         session_id: str,
+        ssl: bool,
     ):
         self.logger = logger
         self.host = host
         self.port = port
         self.timeout = timeout
         self.session_id = session_id
+        self.ssl = ssl
 
     @abstractmethod
     def send_request(
@@ -125,10 +127,16 @@ class SyncTCPRequester(BaseRequester):
         port: int = 2209,
         timeout: int = 30,
         session_id: str = None,
+        ssl: bool = True,
     ):
         self.sock = None
         super().__init__(
-            logger=logger, host=host, port=port, timeout=timeout, session_id=session_id
+            logger=logger,
+            host=host,
+            port=port,
+            timeout=timeout,
+            session_id=session_id,
+            ssl=ssl,
         )
         self.connect()
 
@@ -141,13 +149,13 @@ class SyncTCPRequester(BaseRequester):
         """
         if self.sock is None:
             try:
-                if self.port == 2209:  # SSL
+                if self.ssl:
                     raw_sock = socket.create_connection(
                         (self.host, self.port), timeout=self.timeout
                     )
                     context = ssl.create_default_context()
                     self.sock = context.wrap_socket(raw_sock, server_hostname=self.host)
-                elif self.port == 2208:
+                else:
                     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.sock.settimeout(self.timeout)
                     self.sock.connect((self.host, self.port))
@@ -156,6 +164,10 @@ class SyncTCPRequester(BaseRequester):
                     f"Failed to initiate socket on {self.__class__.__name__}: {e}"
                 )
                 return (THErrorSocketInitialisation, e)
+            finally:
+                self.logger.info(
+                    f"Initiated socket on {self.__class__.__name__}: {self.host}:{self.port}"
+                )
 
     def disconnect(self):
         """Disconnects from the server."""
@@ -238,11 +250,17 @@ class SyncSOAPRequester(BaseRequester):
         port: int = 2209,
         timeout: int = 10,
         session_id: str = None,
+        ssl: bool = True,
     ):
         self.client = None
         self.zclient = None
         super().__init__(
-            logger=logger, host=host, port=port, timeout=timeout, session_id=session_id
+            logger=logger,
+            host=host,
+            port=port,
+            timeout=timeout,
+            session_id=session_id,
+            ssl=ssl,
         )
         self.connect()
 
@@ -260,6 +278,9 @@ class SyncSOAPRequester(BaseRequester):
                 transport = Transport(session=self.client, timeout=self.timeout)
                 self.zclient = Client(
                     wsdl=f"{self.host}?wsdl", transport=transport, settings=settings
+                )
+                self.logger.info(
+                    f"Initiated socket on {self.__class__.__name__}: {self.host}:{self.port}"
                 )
             except Exception as e:
                 self.logger.error(
@@ -315,6 +336,7 @@ class AsyncTCPRequester(BaseRequester):
     socket for encrypted traffic.
 
     Args:
+        session_id (str): The session ID passed to keep the session alive.
         logger (logging.Logger): An instance of `logging.Logger` for logging messages.
         host (str): The hostname or IP address of the BroadWorks server.
         port (int): The port for the OCI-P interface, defaults to 2209.
@@ -323,23 +345,30 @@ class AsyncTCPRequester(BaseRequester):
 
     def __init__(
         self,
-        session_id: str,
         logger: logging.Logger,
         host: str,
         port: int = 2209,
         timeout: int = 10,
+        session_id: str = None,
+        ssl: bool = True,
     ):
-        super().__init__(
-            logger=logger, host=host, port=port, timeout=timeout, session_id=session_id
-        )
         self.reader = None
         self.writer = None
+        super().__init__(
+            logger=logger,
+            host=host,
+            port=port,
+            timeout=timeout,
+            session_id=session_id,
+            ssl=ssl,
+        )
+        self.connect()
 
     async def connect(self):
         """Connects to the server."""
-        if self.reader is None or self.writer is None:
+        if self.reader is None and self.writer is None:
             try:
-                if self.port == 2209:  # SSL
+                if self.ssl:  # SSL
                     context = ssl.create_default_context()
                     self.reader, self.writer = await asyncio.wait_for(
                         asyncio.open_connection(
@@ -347,7 +376,10 @@ class AsyncTCPRequester(BaseRequester):
                         ),
                         timeout=self.timeout,
                     )
-                elif self.port == 2208:
+                    self.logger.info(
+                        f"Initiated socket on {self.__class__.__name__}: {self.host}:{self.port}"
+                    )
+                else:
                     self.reader, self.writer = await asyncio.wait_for(
                         asyncio.open_connection(self.host, self.port),
                         timeout=self.timeout,
@@ -374,7 +406,7 @@ class AsyncTCPRequester(BaseRequester):
                 self.reader = None
 
     async def send_request(
-        self, command: Coroutine
+        self, command: BroadworksCommand
     ) -> Union[str, Tuple[Exception, Exception]]:
         """Sends a request to the server.
 
@@ -440,18 +472,25 @@ class AsyncSOAPRequester(BaseRequester):
 
     def __init__(
         self,
-        session_id: str,
         logger: logging.Logger,
         host: str,
         port: int = 2209,
         timeout: int = 10,
+        session_id: str = None,
+        ssl: bool = True,
     ):
         self.async_client = None
         self.wsdl_client = None
         self.zeep_client = None
         super().__init__(
-            logger=logger, host=host, port=port, timeout=timeout, session_id=session_id
+            logger=logger,
+            host=host,
+            port=port,
+            timeout=timeout,
+            session_id=session_id,
+            ssl=ssl,
         )
+        self.connect()
 
     async def connect(self):
         """Connects to the server."""
@@ -460,7 +499,7 @@ class AsyncSOAPRequester(BaseRequester):
         try:
             self.async_client = AsyncClientHttpx()
             self.wsdl_client = ClientHttpx()
-            # Zeep fetches the WSDL synchronously, but actual requests are synchronous, so we must have a Sync and Async Httpx Client.
+            # Zeep fetches the WSDL synchronously, but actual requests are asynchronous, so we must have a Sync and Async Httpx Client.
 
             settings = Settings(strict=False, xml_huge_tree=True)
             transport = AsyncTransport(
@@ -531,6 +570,7 @@ def create_requester(
     conn_type: str = "SOAP",
     async_: bool = True,
     timeout: int = 10,
+    ssl: bool = True,
 ) -> BaseRequester:
     """Factory function to create a requester.
 
@@ -554,6 +594,7 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
+                ssl=True,
             )
         else:
             return SyncSOAPRequester(
@@ -562,6 +603,7 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
+                ssl=True,
             )
     elif conn_type == "TCP":
         if async_:
@@ -571,6 +613,7 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
+                ssl=True,
             )
         else:
             return SyncTCPRequester(
@@ -579,4 +622,5 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
+                ssl=True,
             )
