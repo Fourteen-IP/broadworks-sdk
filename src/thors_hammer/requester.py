@@ -594,7 +594,7 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
-                ssl=True,
+                ssl=ssl,
             )
         else:
             return SyncSOAPRequester(
@@ -603,7 +603,7 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
-                ssl=True,
+                ssl=ssl,
             )
     elif conn_type == "TCP":
         if async_:
@@ -613,7 +613,7 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
-                ssl=True,
+                ssl=ssl,
             )
         else:
             return SyncTCPRequester(
@@ -622,5 +622,5 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
-                ssl=True,
+                ssl=ssl,
             )
