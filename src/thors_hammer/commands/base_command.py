@@ -1,5 +1,6 @@
-import xml.etree.ElementTree as ET
 from typing import get_type_hints, Union, Optional
+import xml.etree.ElementTree as ET
+
 from thors_hammer.utils.parser import Parser, AsyncParser
 
 

@@ -1,4 +1,3 @@
-# this will be resposnsible for sending and receiving data from the API
 import asyncio
 import socket
 import requests
@@ -22,7 +21,6 @@ from zeep import AsyncClient as AsyncClientZeep
 from zeep.transports import AsyncTransport
 from httpx import AsyncClient as AsyncClientHttpx
 from httpx import Client as ClientHttpx
-
 
 class BaseRequester(ABC):
     """Base class for all requesters.

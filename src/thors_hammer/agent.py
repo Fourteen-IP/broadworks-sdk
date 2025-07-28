@@ -1,9 +1,7 @@
 # Overlap but different from bulker this is resposonible for scripts and reporting. 
 # Where bulker and agent differ is bulker only tackles bulk builing bwks entities, agent pulls info and upates them.
 
-
-from .client import BaseClient
-
+from thors_hammer.client import BaseClient
 
 class Agent:
 

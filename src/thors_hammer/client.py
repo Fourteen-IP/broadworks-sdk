@@ -15,6 +15,7 @@ from thors_hammer.libs.response import RequesterResponse
 from thors_hammer.exceptions import THError
 from thors_hammer.utils.parser import Parser, AsyncParser
 
+
 import attr
 
 
@@ -34,9 +35,9 @@ class BaseClient(ABC):
     """
 
     host: str = attr.ib()
-    port: int = attr.ib()
     username: str = attr.ib()
     password: str = attr.ib()
+    port: int = attr.ib(default=2209)
     conn_type: str = attr.ib(
         default="TCP", validator=attr.validators.in_(["TCP", "SOAP"])
     )
