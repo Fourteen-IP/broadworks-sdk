@@ -1,8 +1,5 @@
 [build-system]
-requires = [
-    "setuptools",
-    "wheel"
-]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,14 +7,14 @@ name = "thors-hammer"
 version = "0.0.1"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.9, <3.13"
+requires-python = ">=3.12"
 license = { file = "LICENSE" }
 authors = [
     { name = "Jordan Prescott", email = "devteam@fourteenip.com" },
     { name = "Michael Clarke", email = "devteam@fourteenip.com" },
-    { name = "Billy Kelly", email = "devteam@fourteenip.com" }
+    { name = "Billy Kelly", email = "devteam@fourteenip.com" },
 ]
-classifiers=[
+classifiers = [
     # Development Status
     "Development Status :: 4 - Beta",
     # Target Audience
@@ -32,7 +29,7 @@ classifiers=[
     "Programming Language :: Python :: 3.12",
     # Operating Systems
     "Operating System :: OS Independent",
-    
+
     "Topic :: Software Development :: Libraries",
     "Topic :: Utilities",
 ]
@@ -48,17 +45,11 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-    "pytest>=8.3.4",
-    "ruff>=0.8.1",
-]
+dev = ["pytest>=8.3.4", "ruff>=0.8.1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 pythonpath = ["src"]
 addopts = "-ra -q"
-filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::UserWarning",
-]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]

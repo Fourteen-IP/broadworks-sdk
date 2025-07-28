@@ -22,6 +22,7 @@ from zeep.transports import AsyncTransport
 from httpx import AsyncClient as AsyncClientHttpx
 from httpx import Client as ClientHttpx
 
+
 class BaseRequester(ABC):
     """Base class for all requesters.
 
@@ -90,6 +91,7 @@ class BaseRequester(ABC):
 
         session_id = etree.Element("sessionId")
         session_id.text = str(self.session_id)
+        session_id.set("xmlns", "")
 
         command = etree.fromstring(command.encode("ISO-8859-1"))
 

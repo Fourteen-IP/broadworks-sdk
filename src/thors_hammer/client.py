@@ -12,8 +12,8 @@ from thors_hammer.commands.base_command import ErrorResponse as BWKSErrorRespons
 from thors_hammer.commands.base_command import SuccessResponse as BWKSSucessResponse
 from thors_hammer.requester import create_requester
 from thors_hammer.libs.response import RequesterResponse
-from thors_hammer.exceptions import THError, THErrorResponse
-from thors_hammer.utils.parser import Parser
+from thors_hammer.exceptions import THError
+from thors_hammer.utils.parser import Parser, AsyncParser
 
 import attr
 
@@ -38,7 +38,7 @@ class BaseClient(ABC):
     password: str = attr.ib()
     port: int = attr.ib(default=2209)
     conn_type: str = attr.ib(
-        default="SOAP", validator=attr.validators.in_(["TCP", "SOAP"])
+        default="TCP", validator=attr.validators.in_(["TCP", "SOAP"])
     )
     user_agent: str = attr.ib(default="Thor's Hammer")
     timeout: int = attr.ib(default=30)
@@ -199,29 +199,36 @@ class Client(BaseClient):
         if self.authenticated:
             return
         try:
-            auth_resp = self._receive_response(
-                self.requester.send_request(
-                    self._dispatch_table.get("AuthenticationRequest")(
-                        userId=self.username
-                    ).to_xml()
-                )
-            )
+            # auth_resp = self._receive_response(
+            #     self.requester.send_request(
+            #         self._dispatch_table.get("AuthenticationRequest")(
+            #             userId=self.username
+            #         ).to_xml()
+            #     )
+            # )
 
-            authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
+            # authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
 
-            signed_password = (
-                hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
-                .hexdigest()
-                .lower()
-            )
+            # signed_password = (
+            #     hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
+            #     .hexdigest()
+            #     .lower()
+            # )
 
-            login_resp = self._receive_response(
-                self.requester.send_request(
-                    self._dispatch_table.get("LoginRequest22V5")(
-                        userId=self.username, signedPassword=signed_password
-                    ).to_xml()
-                )
+            # login_resp = self._receive_response(
+            #     self.requester.send_request(
+            #         self._dispatch_table.get("LoginRequest22V5")(
+            #             userId=self.username, signedPassword=signed_password
+            #         ).to_xml()
+            #     )
+            # )
+
+            login_command = self._dispatch_table.get("LoginRequest22V5")(
+                userId=self.username, password=self.password
             )
+            xml = login_command.to_xml()
+            login_req = self.requester.send_request(xml)
+            login_resp = self._receive_response(login_req)
 
             if isinstance(login_resp, BWKSErrorResponse):
                 raise THError(f"Invalid session parameters: {login_resp.summary}")
@@ -260,7 +267,7 @@ class Client(BaseClient):
 
         # Validate Response Class Instantiation
         if not response_class:
-            raise THError(f"Failed To Find Raw Response Type: { type_name }")
+            raise THError(f"Failed To Find Raw Response Type: {type_name}")
 
         # Construct Response Class With Raw Response
         return response_class.from_xml(response)
@@ -408,7 +415,7 @@ class AsyncClient(BaseClient):
 
         # Validate Response Class Instantiation
         if not response_class:
-            raise THError(f"Failed To Find Raw Response Type: { type_name }")
+            raise THError(f"Failed To Find Raw Response Type: {type_name}")
 
         # Construct Response Class With Raw Response
         return await response_class.from_xml_async(response)
