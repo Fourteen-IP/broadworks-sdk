@@ -50,6 +50,9 @@
 ## NOTES
 
 ## JOURNAL
+@malkin0xb8 25.07.2025
+- Discovered that the password signing is incorrect, after testing with raw password the login succeeded.
+- Online suggestions say that since the socket and connection is SSL encrypted the OCI backend expects a different charset or format for the signed password.
 
 @Jordan-Prescott 15.07.2025
 - Added tests for the client class found in tests/client_tests.py
