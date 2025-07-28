@@ -93,6 +93,8 @@ class BaseRequester(ABC):
         session_id.text = str(self.session_id)
         session_id.set("xmlns", "")
 
+        session_id.set("xmlns", "")
+
         command = etree.fromstring(command.encode("ISO-8859-1"))
 
         broadsoft_doc = ElementMaker.BroadsoftDocument(
@@ -203,7 +205,7 @@ class SyncTCPRequester(BaseRequester):
 
             command_bytes = self.build_oci_xml(command)
 
-            self.sock.sendall(command_bytes + b"\0")
+            self.sock.sendall(command_bytes + b"\n")
 
             content = b""
             while True:
@@ -226,8 +228,8 @@ class SyncTCPRequester(BaseRequester):
         except Exception as e:
             return (THErrorSendRequestFailed, e)
 
-    def __del__(self):
-        self.disconnect()
+    # def __del__(self):
+    #     self.disconnect()
 
 
 class SyncSOAPRequester(BaseRequester):
@@ -326,8 +328,8 @@ class SyncSOAPRequester(BaseRequester):
             )
             return (THErrorSendRequestFailed, e)
 
-    def __del__(self):
-        self.disconnect()
+    # def __del__(self):
+    #     self.disconnect()
 
 
 class AsyncTCPRequester(BaseRequester):
@@ -448,7 +450,6 @@ class AsyncTCPRequester(BaseRequester):
                 content += chunk
                 if b"</BroadsoftDocument>" in content:
                     break
-
             return content.rstrip(b"\0").decode("ISO-8859-1")
 
         except Exception as e:

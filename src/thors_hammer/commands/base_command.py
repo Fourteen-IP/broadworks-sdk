@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 
 from thors_hammer.utils.parser import Parser, AsyncParser
 
+
 class OCIType:
     """
     Base Class For Broadworks Types

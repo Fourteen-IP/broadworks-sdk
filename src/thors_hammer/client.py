@@ -15,6 +15,7 @@ from thors_hammer.libs.response import RequesterResponse
 from thors_hammer.exceptions import THError
 from thors_hammer.utils.parser import Parser, AsyncParser
 
+
 import attr
 
 
@@ -45,13 +46,14 @@ class BaseClient(ABC):
     logger: logging.Logger = attr.ib(default=None)
     authenticated: bool = attr.ib(default=False)
     session_id: str = attr.ib(default=uuid.uuid4())
+    ssl: bool = attr.ib(default=True)
 
     _dispatch_table: Dict[str, Type[BWKSCommand]] = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         self._set_up_dispatch_table()
         self.logger = self.logger or self._set_up_logging()
-        self.session_id or str(uuid.uuid4())
+        self.session_id = self.session_id or str(uuid.uuid4())
         self.requester = create_requester(
             conn_type=self.conn_type,
             async_=self.async_mode,
@@ -60,6 +62,7 @@ class BaseClient(ABC):
             timeout=self.timeout,
             logger=self.logger,
             session_id=self.session_id,
+            ssl=self.ssl,
         )
         if not self.async_mode:
             self.authenticate()
