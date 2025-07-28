@@ -1,0 +1,65 @@
+site_name: Thor's Hammer
+site_description: A Python SDK for interacting with BroadWork OCIP API's (SOAP/ TCP).
+site_url: "https://fourteen-ip.github.io/thors-hammer/"
+repo_url: "https://github.com/fourteen-ip/thors-hammer"
+repo_name: "fourteen-ip/thors-hammer"
+
+theme:
+  name: material
+  font:
+    text: Inter Tight
+    code: Red Hat Mono
+  logo: ../assets/images/thors-hammer.png
+  favicon: ../assets/images/thors-hammer.png
+  palette:
+  # Dark Mode
+    - scheme: slate
+      toggle: 
+        icon: material/toggle-switch
+        name: Dark Mode
+      primary: dark
+      accent: cyan
+    # Light Mode
+    - scheme: default
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Light Mode
+      primary: light
+      accent: cyan
+    
+
+  features:
+      - navigation.instant
+      - navigation.expand
+
+nav:
+  - Overview: index.md
+  - Client:
+    - Client: client/client.md
+    - Async Client: client/async-client.md
+  - Agent:
+    - Agent: agent/agent.md
+    - Bulk Operations:
+      - Create Users: agent/bulk-operaitions/users.md
+    - Automations:
+      - Find Alias: agent/automations/find-alias.md
+  - Commands: commands/commands.md
+  - Utilities: utilities/utilities.md
+  
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.magiclink
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+      
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["src"]

@@ -1,3 +1,4 @@
+
 [chronicl](https://github.com/minimal-mind/chronicl)
 
 ## CODEBASE OVERVIEW
@@ -50,9 +51,17 @@
 ## NOTES
 
 ## JOURNAL
+
 @malkin0xb8 25.07.2025
 - Discovered that the password signing is incorrect, after testing with raw password the login succeeded.
 - Online suggestions say that since the socket and connection is SSL encrypted the OCI backend expects a different charset or format for the signed password.
+
+@KiPageFault 22.07.2025
+- Added Parser class designed for Type/Request/Response type translation between class objects, xml, and dictionaries.
+- Added OCI base classes to encapsulate Type/Request/Response objects and provide parser utility.
+- Finalised Client _receive_response in accordance with Requester object. It is designed to take a raw string on a successful response or \
+  a tuple object containing an exception object and message.
+- All above implementations require documentaiton.
 
 @Jordan-Prescott 22.07.2025
 - Added absolute import statements as this is a python package its best practuice 
@@ -69,11 +78,4 @@
 - Decided to add _receive_response to the client class to handle the response from the server. How this is done needs flushing out.
 - Still need to add tests to the library which will start with the client class. 
 - Still need to add documentation to the library.
-
-@KiPageFault 22.07.2025
-- Added Parser class designed for Type/Request/Response type translation between class objects, xml, and dictionaries.
-- Added OCI base classes to encapsulate Type/Request/Response objects and provide parser utility.
-- Finalised Client _receive_response in accordance with Requester object. It is designed to take a raw string on a successful response or \
-  a tuple object containing an exception object and message.
-- All above implementations require documentaiton.
 

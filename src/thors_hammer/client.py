@@ -15,9 +15,7 @@ from thors_hammer.libs.response import RequesterResponse
 from thors_hammer.exceptions import THError
 from thors_hammer.utils.parser import Parser, AsyncParser
 
-
 import attr
-
 
 @attr.s(slots=True, kw_only=True)
 class BaseClient(ABC):
@@ -120,9 +118,7 @@ class BaseClient(ABC):
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.WARNING)
         logger.addHandler(console_handler)
-
         return logger
-
 
 class Client(BaseClient):
     """Connection to a BroadWorks server
@@ -192,7 +188,7 @@ class Client(BaseClient):
         Authenticates client with username and password in client.
 
         Note: Directly send request to requester to avoid double authentication
-
+        
         Returns:
             BWKSCommand: The response from the server
 
@@ -234,15 +230,14 @@ class Client(BaseClient):
             login_resp = self._receive_response(login_req)
 
             if isinstance(login_resp, BWKSErrorResponse):
-                raise THError(f"Invalid session parameters: {login_resp.summary}")
-
+                raise THError(f"Invalid session parameters: {login_resp.summary}"
         except Exception as e:
             self.logger.error(f"Failed to authenticate: {e}")
             raise THError(f"Failed to authenticate: {e}")
         self.logger.info("Authenticated with server")
         self.authenticated = True
         return login_resp
-
+                              
     def _receive_response(self, response: Union[tuple | str]) -> BWKSCommand:
         """Receives response from requester and returns BWKSCommand"""
 
@@ -274,7 +269,6 @@ class Client(BaseClient):
 
         # Construct Response Class With Raw Response
         return response_class.from_xml(response)
-
 
 class AsyncClient(BaseClient):
     """Async version of Client.
@@ -314,6 +308,7 @@ class AsyncClient(BaseClient):
         Returns:
             BWKSCommand: The response from the server
         """
+
         if not self.authenticated:
             await self.authenticate()
         self.logger.info(f"Executing command: {command.__class__.__name__}")
@@ -383,6 +378,7 @@ class AsyncClient(BaseClient):
 
             if isinstance(login_resp, BWKSErrorResponse):
                 raise THError(f"Invalid session parameters: {login_resp.summary}")
+
         except Exception as e:
             self.logger.error(f"Failed to authenticate: {e}")
             raise THError(f"Failed to authenticate: {e}")

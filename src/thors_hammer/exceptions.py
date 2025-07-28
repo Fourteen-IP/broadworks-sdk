@@ -26,7 +26,7 @@ class THErrorResponse(THError):
     """
     Exception raised when an ErrorResponse is received and decoded.
     """
-
+    
     pass
 
 
@@ -35,7 +35,7 @@ class THErrorTimeOut(THError):
     """
     Exception raised when nothing is head back from the server.
     """
-
+    
     pass
 
 
