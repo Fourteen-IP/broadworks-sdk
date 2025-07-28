@@ -17,6 +17,7 @@ from thors_hammer.utils.parser import Parser, AsyncParser
 
 import attr
 
+
 @attr.s(slots=True, kw_only=True)
 class BaseClient(ABC):
     """Base class for all clients
@@ -120,6 +121,7 @@ class BaseClient(ABC):
         logger.addHandler(console_handler)
         return logger
 
+
 class Client(BaseClient):
     """Connection to a BroadWorks server
 
@@ -188,7 +190,7 @@ class Client(BaseClient):
         Authenticates client with username and password in client.
 
         Note: Directly send request to requester to avoid double authentication
-        
+
         Returns:
             BWKSCommand: The response from the server
 
@@ -197,47 +199,47 @@ class Client(BaseClient):
         """
         if self.authenticated:
             return
-        try:
-            # auth_resp = self._receive_response(
-            #     self.requester.send_request(
-            #         self._dispatch_table.get("AuthenticationRequest")(
-            #             userId=self.username
-            #         ).to_xml()
-            #     )
-            # )
 
-            # authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
+        # auth_resp = self._receive_response(
+        #     self.requester.send_request(
+        #         self._dispatch_table.get("AuthenticationRequest")(
+        #             userId=self.username
+        #         ).to_xml()
+        #     )
+        # )
 
-            # signed_password = (
-            #     hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
-            #     .hexdigest()
-            #     .lower()
-            # )
+        # # TODO: Remove this
+        # print(f"Auth response type: {type(auth_resp)}")
+        # print(f"Auth response: {auth_resp}")
+        # print(f"Nonce value: {auth_resp.nonce}")
+        # print(f"Nonce type: {type(auth_resp.nonce)}")
 
-            # login_resp = self._receive_response(
-            #     self.requester.send_request(
-            #         self._dispatch_table.get("LoginRequest22V5")(
-            #             userId=self.username, signedPassword=signed_password
-            #         ).to_xml()
-            #     )
-            # )
+        # authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
+        # signed_password = (
+        #     hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
+        #     .hexdigest()
+        #     .lower()
+        # )
 
-            login_command = self._dispatch_table.get("LoginRequest22V5")(
-                userId=self.username, password=self.password
+        # # TODO: Remove this
+        # print(f"Auth hash: {authhash}")
+        # print(f"Signed password: {signed_password}")
+
+        login_resp = self._receive_response(
+            self.requester.send_request(
+                self._dispatch_table.get("LoginRequest22V5")(
+                    userId=self.username, password=self.password
+                ).to_xml()
             )
-            xml = login_command.to_xml()
-            login_req = self.requester.send_request(xml)
-            login_resp = self._receive_response(login_req)
+        )
 
-            if isinstance(login_resp, BWKSErrorResponse):
-                raise THError(f"Invalid session parameters: {login_resp.summary}"
-        except Exception as e:
-            self.logger.error(f"Failed to authenticate: {e}")
-            raise THError(f"Failed to authenticate: {e}")
+        if isinstance(login_resp, BWKSErrorResponse):
+            raise THError(f"Failed to authenticate: {login_resp.summary}")
+
         self.logger.info("Authenticated with server")
         self.authenticated = True
         return login_resp
-                              
+
     def _receive_response(self, response: Union[tuple | str]) -> BWKSCommand:
         """Receives response from requester and returns BWKSCommand"""
 
@@ -270,10 +272,12 @@ class Client(BaseClient):
         # Construct Response Class With Raw Response
         return response_class.from_xml(response)
 
+
 class AsyncClient(BaseClient):
     """Async version of Client.
 
-    Note: Performs the same functions as Client, but in an asynchronous manner.
+    Note: Performs the same functions as Client, but in an async manner.
+    This Client needs authenticating manually. Call authenticate() before using.
 
     Args:
         host (str): URL or IP address of server. Depends on connection type.

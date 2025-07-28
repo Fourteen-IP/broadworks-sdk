@@ -52,6 +52,12 @@
 
 ## JOURNAL
 
+@Jordan-Prescott 28.07.25
+- Issue is definatley with the signedPassword however currently no idea what causes this
+- Signing in with just the login request works fine 
+- Hashing is the same in both Nigels and ours tested and there is no issue there 
+- Issue found when we authenticate is there is a logout request sent from the ADP but Nigels does not 
+
 @malkin0xb8 25.07.2025
 - Discovered that the password signing is incorrect, after testing with raw password the login succeeded.
 - Online suggestions say that since the socket and connection is SSL encrypted the OCI backend expects a different charset or format for the signed password.
