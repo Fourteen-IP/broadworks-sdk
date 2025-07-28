@@ -1,5 +1,6 @@
-from .client import API as API
+from .client import BaseClient as BaseClient
+from .client import Client as Client 
+from .client import AsyncClient as AsyncClient
 from .agent import Agent as Agent
-from .bulks import Bulker as Bulker
 
-__all__ = ["API", "Agent", "Bulker"]
+__all__ = ["Client", "AsyncClient", "Agent"]

@@ -1,8 +1,5 @@
 [build-system]
-requires = [
-    "setuptools",
-    "wheel"
-]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,14 +7,14 @@ name = "thorz-hammer"
 version = "0.0.1"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.9, <3.13"
+requires-python = ">=3.12"
 license = { file = "LICENSE" }
 authors = [
     { name = "Jordan Prescott", email = "devteam@fourteenip.com" },
     { name = "Michael Clarke", email = "devteam@fourteenip.com" },
-    { name = "Billy Kelly", email = "devteam@fourteenip.com" }
+    { name = "Billy Kelly", email = "devteam@fourteenip.com" },
 ]
-classifiers=[
+classifiers = [
     # Development Status
     "Development Status :: 4 - Beta",
     # Target Audience
@@ -32,19 +29,32 @@ classifiers=[
     "Programming Language :: Python :: 3.12",
     # Operating Systems
     "Operating System :: OS Independent",
-    
+
     "Topic :: Software Development :: Libraries",
     "Topic :: Utilities",
 ]
 keywords = ["broadworks", "oci", "soap", "telephony", "voip"]
 
 dependencies = [
+    "asyncio>=3.4.3",
+    "attrs>=21.4.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.11.7",
     "attrs>=21.4.0",
     "requests>=2.32.3",
     "zeep>=4.3.1",
 ]
 
 [dependency-groups]
+dev = ["pytest>=8.3.4", "ruff>=0.8.1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+pythonpath = ["src"]
+addopts = "-ra -q"
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
+
 dev = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.6.15",
