@@ -1,6 +1,9 @@
 # Broadworks SDK
 
-ADD TAGS HERE
+[![Downloads](https://static.pepy.tech/badge/broadworks-sdk)](https://pepy.tech/project/broadworks-sdk)
+[![Downloads](https://static.pepy.tech/badge/broadworks-sdk/month)](https://pepy.tech/project/broadworks-sdk)
+[![Downloads](https://static.pepy.tech/badge/broadworks-sdk/week)](https://pepy.tech/project/broadworks-sdk)
+[![pypi version](https://img.shields.io/pypi/v/broadworks-sdk.svg)](https://pypi.python.org/pypi/broadworks-sdk)
 
 `broadworks-sdk` provides an SDK for interfacing with Broadworks (BWKS) OCIP interface either via TCP or SOAP.
 
