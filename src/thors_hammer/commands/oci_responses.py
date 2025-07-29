@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 
 from thors_hammer.commands.base_command import OCIDataResponse
-from thors_hammer.commands.oci_types import * # noqa: F403
+from thors_hammer.commands.oci_types import *  # noqa: F403
 
 
 @dataclass
@@ -6618,6 +6618,29 @@ class LoginResponse22V5(OCIDataResponse):
     since January 1, 1970, 00:00:00 GMT, and it is set to the more current time between
     the system level token revocation time and user level token revocation time."""
 
+    loginType: str
+
+    locale: str
+
+    encoding: str
+
+    isEnterprise: bool
+
+    userDomain: str
+
+    groupId: Optional[str] = None
+
+    serviceProviderId: Optional[str] = None
+
+    passwordExpiresDays: Optional[int] = None
+
+    resellerId: Optional[str] = None
+
+    tokenRevocationTime: Optional[int] = None
+
+
+@dataclass
+class LoginResponse14sp4(OCIDataResponse):
     loginType: str
 
     locale: str

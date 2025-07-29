@@ -57,9 +57,7 @@ class Parser:
 
             serialize_value(root, attr, value)
 
-        return ET.tostring(root, encoding="utf-8", xml_declaration=False).decode(
-            "utf-8"
-        )
+        return ET.tostring(root, encoding="ISO-8859-1", xml_declaration=False).decode()
 
     @staticmethod
     def to_xml_from_dict(data: dict, cls: Type) -> str:
@@ -74,8 +72,6 @@ class Parser:
             value = getattr(obj, attr, None)
             if value is None:
                 continue
-
-            args = get_args(hint)
             origin = getattr(hint, "__origin__", None)
             if origin in (list, List):
                 result[attr] = []

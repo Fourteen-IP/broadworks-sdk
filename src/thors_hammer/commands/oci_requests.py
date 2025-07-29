@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 
 from thors_hammer.commands.base_command import OCIRequest
-from thors_hammer.commands.oci_types import *  # noqa: F403
+from thors_hammer.commands.oci_types import *
 
 
 @dataclass
@@ -16303,6 +16303,15 @@ class LoginRequest22V5(OCIRequest):
     The following data element is only used in XS data mode and will be ignored in AS data mode:
       signedPassword, ignored in AS data mode unless the password element is not present then an error is returned."""
 
+    userId: str
+
+    password: Optional[str] = None
+
+    signedPassword: Optional[str] = None
+
+
+@dataclass
+class LoginRequest14sp4(OCIRequest):
     userId: str
 
     password: Optional[str] = None
