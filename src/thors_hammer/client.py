@@ -208,7 +208,7 @@ class Client(BaseClient):
             userId=self.username, password=self.password
         )
 
-        if not self.secure:
+        if not self.tls:
             # Hashing password needed when not over secure connection
             auth_resp = self._receive_response(
                 self.requester.send_request(
@@ -365,7 +365,7 @@ class AsyncClient(BaseClient):
             userId=self.username, password=self.password
         )
 
-        if not self.secure:
+        if not self.tls:
             # Hashing password needed when not over secure connection
             auth_resp = self._receive_response(
                 self.requester.send_request(
