@@ -207,7 +207,8 @@ class SyncTCPRequester(BaseRequester):
             while True:
                 readable, _, _ = select.select([self.sock], [], [], self.timeout)
                 if not readable:
-                    break
+                    self.logger.error(f"Select timed out: {self.__class__.__name__}")
+                    return (THErrorSocketTimeout, TimeoutError("Socket read timed out"))
 
                 chunk = self.sock.recv(4096)
                 if not chunk:
@@ -218,9 +219,6 @@ class SyncTCPRequester(BaseRequester):
                     break
 
             return content.rstrip(b"\0").decode("ISO-8859-1")
-        except socket.timeout as e:
-            self.logger.error(f"Socket timed out: {self.__class__.__name__}: {e}")
-            return (THErrorSocketTimeout, e)
         except Exception as e:
             return (THErrorSendRequestFailed, e)
 
