@@ -45,7 +45,7 @@ class BaseClient(ABC):
     logger: logging.Logger = attr.ib(default=None)
     authenticated: bool = attr.ib(default=False)
     session_id: str = attr.ib(default=str(uuid.uuid4()))
-    secure: bool = attr.ib(default=True)
+    tls: bool = attr.ib(default=True)
 
     _dispatch_table: Dict[str, Type[BWKSCommand]] = attr.ib(default=None)
 
@@ -60,7 +60,7 @@ class BaseClient(ABC):
             timeout=self.timeout,
             logger=self.logger,
             session_id=self.session_id,
-            ssl=self.secure,
+            tls=self.tls,
         )
         if not self.async_mode:
             self.authenticate()

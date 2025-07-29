@@ -41,14 +41,12 @@ class BaseRequester(ABC):
         port: int,
         timeout: int,
         session_id: str,
-        ssl: bool,
     ):
         self.logger = logger
         self.host = host
         self.port = port
         self.timeout = timeout
         self.session_id = session_id
-        self.ssl = ssl
 
     @abstractmethod
     def send_request(
@@ -129,7 +127,7 @@ class SyncTCPRequester(BaseRequester):
         port: int = 2209,
         timeout: int = 30,
         session_id: str = None,
-        ssl: bool = True,
+        tls: bool = True,
     ):
         self.sock = None
         super().__init__(
@@ -138,7 +136,7 @@ class SyncTCPRequester(BaseRequester):
             port=port,
             timeout=timeout,
             session_id=session_id,
-            ssl=ssl,
+            tls=tls,
         )
         self.connect()
 
@@ -151,7 +149,7 @@ class SyncTCPRequester(BaseRequester):
         """
         if self.sock is None:
             try:
-                if self.ssl:
+                if self.tls:
                     raw_sock = socket.create_connection(
                         (self.host, self.port), timeout=self.timeout
                     )
@@ -252,7 +250,6 @@ class SyncSOAPRequester(BaseRequester):
         port: int = 2209,
         timeout: int = 10,
         session_id: str = None,
-        ssl: bool = True,
     ):
         self.client = None
         self.zclient = None
@@ -262,7 +259,6 @@ class SyncSOAPRequester(BaseRequester):
             port=port,
             timeout=timeout,
             session_id=session_id,
-            ssl=ssl,
         )
         self.connect()
 
@@ -352,7 +348,7 @@ class AsyncTCPRequester(BaseRequester):
         port: int = 2209,
         timeout: int = 10,
         session_id: str = None,
-        ssl: bool = True,
+        tls: bool = True,
     ):
         self.reader = None
         self.writer = None
@@ -362,7 +358,7 @@ class AsyncTCPRequester(BaseRequester):
             port=port,
             timeout=timeout,
             session_id=session_id,
-            ssl=ssl,
+            tls=tls,
         )
         self.connect()
 
@@ -370,7 +366,7 @@ class AsyncTCPRequester(BaseRequester):
         """Connects to the server."""
         if self.reader is None and self.writer is None:
             try:
-                if self.ssl:  # SSL
+                if self.tls:
                     context = ssl.create_default_context()
                     self.reader, self.writer = await asyncio.wait_for(
                         asyncio.open_connection(
@@ -478,7 +474,6 @@ class AsyncSOAPRequester(BaseRequester):
         port: int = 2209,
         timeout: int = 10,
         session_id: str = None,
-        ssl: bool = True,
     ):
         self.async_client = None
         self.wsdl_client = None
@@ -489,7 +484,6 @@ class AsyncSOAPRequester(BaseRequester):
             port=port,
             timeout=timeout,
             session_id=session_id,
-            ssl=ssl,
         )
         self.connect()
 
@@ -571,7 +565,7 @@ def create_requester(
     conn_type: str = "SOAP",
     async_: bool = True,
     timeout: int = 10,
-    ssl: bool = True,
+    tls: bool = True,
 ) -> BaseRequester:
     """Factory function to create a requester.
 
@@ -595,7 +589,6 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
-                ssl=ssl,
             )
         else:
             return SyncSOAPRequester(
@@ -604,7 +597,6 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
-                ssl=ssl,
             )
     elif conn_type == "TCP":
         if async_:
@@ -614,7 +606,7 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
-                ssl=ssl,
+                tls=tls,
             )
         else:
             return SyncTCPRequester(
@@ -623,5 +615,5 @@ def create_requester(
                 timeout=timeout,
                 logger=logger,
                 session_id=session_id,
-                ssl=ssl,
+                tls=tls,
             )
