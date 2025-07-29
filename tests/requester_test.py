@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from thors_hammer.requester.SyncTCPRequester import SyncTCPRequester
+from broadworks_sdk.requester.SyncTCPRequester import SyncTCPRequester
 
 
 @pytest.fixture

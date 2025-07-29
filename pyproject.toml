@@ -3,9 +3,9 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "thorz-hammer"
+name = "broadworks-sdk"
 version = "0.0.1"
-description = "Add your description here"
+description = "Python SDK for BroadWorks OCI (Open Client Interface) API"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
@@ -16,24 +16,25 @@ authors = [
 ]
 classifiers = [
     # Development Status
-    "Development Status :: 4 - Beta",
+    "Development Status :: 2 - Pre-Alpha",
     # Target Audience
     "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
     # License
     "License :: OSI Approved :: MIT License",
     # Programming Languages
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.12",
     # Operating Systems
     "Operating System :: OS Independent",
-
+    # Topics
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Communications :: Telephony",
     "Topic :: Software Development :: Libraries",
     "Topic :: Utilities",
 ]
-keywords = ["broadworks", "oci", "soap", "telephony", "voip"]
+keywords = ["broadworks", "oci", "soap", "telephony", "voip", "sdk", "api"]
 
 dependencies = [
     "asyncio>=3.4.3",

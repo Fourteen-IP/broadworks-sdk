@@ -6,14 +6,14 @@ from typing import Dict, Type, Union, Coroutine
 import inspect
 from abc import ABC, abstractmethod
 
-from thors_hammer.commands import oci_types, oci_requests, oci_responses
-from thors_hammer.commands.base_command import OCICommand as BWKSCommand
-from thors_hammer.commands.base_command import ErrorResponse as BWKSErrorResponse
-from thors_hammer.commands.base_command import SuccessResponse as BWKSSucessResponse
-from thors_hammer.requester import create_requester
-from thors_hammer.libs.response import RequesterResponse
-from thors_hammer.exceptions import THError
-from thors_hammer.utils.parser import Parser, AsyncParser
+from broadworks_sdk.commands import oci_types, oci_requests, oci_responses
+from broadworks_sdk.commands.base_command import OCICommand as BWKSCommand
+from broadworks_sdk.commands.base_command import ErrorResponse as BWKSErrorResponse
+from broadworks_sdk.commands.base_command import SuccessResponse as BWKSSucessResponse
+from broadworks_sdk.requester import create_requester
+from broadworks_sdk.libs.response import RequesterResponse
+from broadworks_sdk.exceptions import THError
+from broadworks_sdk.utils.parser import Parser, AsyncParser
 
 import attr
 
@@ -40,7 +40,7 @@ class BaseClient(ABC):
     conn_type: str = attr.ib(
         default="TCP", validator=attr.validators.in_(["TCP", "SOAP"])
     )
-    user_agent: str = attr.ib(default="Thor's Hammer")
+    user_agent: str = attr.ib(default="Broadworks SDK")
     timeout: int = attr.ib(default=30)
     logger: logging.Logger = attr.ib(default=None)
     authenticated: bool = attr.ib(default=False)

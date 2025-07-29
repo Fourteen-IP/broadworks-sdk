@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, List
 
-from thors_hammer.commands.base_command import OCIType, OCICommand
+from broadworks_sdk.commands.base_command import OCIType, OCICommand
 
 
 @dataclass

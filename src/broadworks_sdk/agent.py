@@ -1,10 +1,10 @@
-# Overlap but different from bulker this is resposonible for scripts and reporting. 
+# Overlap but different from bulker this is resposonible for scripts and reporting.
 # Where bulker and agent differ is bulker only tackles bulk builing bwks entities, agent pulls info and upates them.
 
-from thors_hammer.client import BaseClient
+from broadworks_sdk.client import BaseClient
+
 
 class Agent:
-
     __instance = None
 
     @staticmethod
@@ -27,5 +27,3 @@ class Agent:
             raise Exception("Singleton cannot be instantiated more than once!")
         else:
             self.Client = Client
-
-    
