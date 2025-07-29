@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 
 from thors_hammer.commands.base_command import OCIRequest
-from thors_hammer.commands.oci_types import *  # noqa: F403
+from thors_hammer.commands.oci_types import *
 
 
 @dataclass
