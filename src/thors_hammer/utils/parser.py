@@ -72,8 +72,6 @@ class Parser:
             value = getattr(obj, attr, None)
             if value is None:
                 continue
-
-            args = get_args(hint)
             origin = getattr(hint, "__origin__", None)
             if origin in (list, List):
                 result[attr] = []
