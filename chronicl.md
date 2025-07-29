@@ -52,6 +52,10 @@
 
 ## JOURNAL
 
+@malkin0xb8 29.07.25
+- Login issue was resolved as poor documentation from Cisco's end, in the new release LoginRequest22V5 does not require a signed password as it relies on the encrypted socket for TCP or TLS/SSL for HTTPS SOAP.
+- We now let the user choose, and if it they want a raw unencrypted connection, we sign the password and revert to LoginRequest14sp4 to login.
+
 @Jordan-Prescott 28.07.25
 - Issue is definatley with the signedPassword however currently no idea what causes this
 - Signing in with just the login request works fine 
