@@ -44,15 +44,14 @@ class BaseClient(ABC):
     timeout: int = attr.ib(default=30)
     logger: logging.Logger = attr.ib(default=None)
     authenticated: bool = attr.ib(default=False)
-    session_id: str = attr.ib(default=uuid.uuid4())
-    ssl: bool = attr.ib(default=True)
+    session_id: str = attr.ib(default=str(uuid.uuid4()))
+    secure: bool = attr.ib(default=True)
 
     _dispatch_table: Dict[str, Type[BWKSCommand]] = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         self._set_up_dispatch_table()
         self.logger = self.logger or self._set_up_logging()
-        self.session_id = self.session_id or str(uuid.uuid4())
         self.requester = create_requester(
             conn_type=self.conn_type,
             async_=self.async_mode,
@@ -61,7 +60,7 @@ class BaseClient(ABC):
             timeout=self.timeout,
             logger=self.logger,
             session_id=self.session_id,
-            ssl=self.ssl,
+            ssl=self.secure,
         )
         if not self.async_mode:
             self.authenticate()
@@ -126,12 +125,16 @@ class Client(BaseClient):
     """Connection to a BroadWorks server
 
     Args:
-        host (str): URL or IP address of server. Depends on connection type.
+        host (str): URL or IP address of server. Depends on connection type. If SOAP DO NOT include '?wsdl' in the end of the URL.
         username (str): The username of the user
         password (str): The password of the user
         conn_type (str): Either 'TCP' or 'SOAP'. TCP is the default.
-        user_agent (str): The user agent of the client, used for logging. Default is 'Thor\'s Hammer'.
+
+        port (int): The port of the server. Default is 2209. Only used in TCP mode.
+        secure (bool): Whether the connection is secure. Default is True. Only used in TCP mode. Password is hashed if not secure.
+
         timeout (int): The timeout of the client. Default is 30 seconds.
+        user_agent (str): The user agent of the client, used for logging. Default is 'Thor\'s Hammer'.
         logger (logging.Logger): The logger of the client. Default is None.
 
     Attributes:
@@ -200,37 +203,34 @@ class Client(BaseClient):
         if self.authenticated:
             return
 
-        # auth_resp = self._receive_response(
-        #     self.requester.send_request(
-        #         self._dispatch_table.get("AuthenticationRequest")(
-        #             userId=self.username
-        #         ).to_xml()
-        #     )
-        # )
+        # Default to 22V5 login request - recommended
+        request = self._dispatch_table.get("LoginRequest22V5")(
+            userId=self.username, password=self.password
+        )
 
-        # # TODO: Remove this
-        # print(f"Auth response type: {type(auth_resp)}")
-        # print(f"Auth response: {auth_resp}")
-        # print(f"Nonce value: {auth_resp.nonce}")
-        # print(f"Nonce type: {type(auth_resp.nonce)}")
+        if not self.secure:
+            # Hashing password needed when not over secure connection
+            auth_resp = self._receive_response(
+                self.requester.send_request(
+                    self._dispatch_table.get("AuthenticationRequest")(
+                        userId=self.username
+                    ).to_xml()
+                )
+            )
 
-        # authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
-        # signed_password = (
-        #     hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
-        #     .hexdigest()
-        #     .lower()
-        # )
+            authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
+            signed_password = (
+                hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
+                .hexdigest()
+                .lower()
+            )
 
-        # # TODO: Remove this
-        # print(f"Auth hash: {authhash}")
-        # print(f"Signed password: {signed_password}")
+            request = self._dispatch_table.get("LoginRequest14sp4")(
+                userId=self.username, signedPassword=signed_password
+            )
 
         login_resp = self._receive_response(
-            self.requester.send_request(
-                self._dispatch_table.get("LoginRequest22V5")(
-                    userId=self.username, password=self.password
-                ).to_xml()
-            )
+            self.requester.send_request(request.to_xml())
         )
 
         if isinstance(login_resp, BWKSErrorResponse):
@@ -280,18 +280,22 @@ class AsyncClient(BaseClient):
     This Client needs authenticating manually. Call authenticate() before using.
 
     Args:
-        host (str): URL or IP address of server. Depends on connection type.
+        host (str): URL or IP address of server. Depends on connection type. If SOAP DO NOT include '?wsdl' in the end of the URL.
         username (str): The username of the user
         password (str): The password of the user
         conn_type (str): Either 'TCP' or 'SOAP'. TCP is the default.
-        user_agent (str): The user agent of the client, used for logging. Default is 'Thor\'s Hammer'.
+
+        port (int): The port of the server. Default is 2209. Only used in TCP mode.
+        secure (bool): Whether the connection is secure. Default is True. Only used in TCP mode. Password is hashed if not secure.
+
         timeout (int): The timeout of the client. Default is 30 seconds.
+        user_agent (str): The user agent of the client, used for logging. Default is 'Thor\'s Hammer'.
         logger (logging.Logger): The logger of the client. Default is None.
 
     Attributes:
         authenticated (bool): Whether the client is authenticated
         session_id (str): The session id of the client
-        dispatch_table (dict): The dispatch table of the client
+        _dispatch_table (dict): The dispatch table of the client
 
     Raises:
         Exception: If the client fails to authenticate
@@ -355,37 +359,40 @@ class AsyncClient(BaseClient):
         """
         if self.authenticated:
             return
-        try:
-            auth_resp = await self._receive_response(
+
+        # Default to 22V5 login request - recommended
+        request = self._dispatch_table.get("LoginRequest22V5")(
+            userId=self.username, password=self.password
+        )
+
+        if not self.secure:
+            # Hashing password needed when not over secure connection
+            auth_resp = self._receive_response(
                 self.requester.send_request(
                     self._dispatch_table.get("AuthenticationRequest")(
                         userId=self.username
-                    ).to_xml_async()
+                    ).to_xml()
                 )
             )
 
             authhash = hashlib.sha1(self.password.encode()).hexdigest().lower()
-
             signed_password = (
                 hashlib.md5(":".join([auth_resp.nonce, authhash]).encode())
                 .hexdigest()
                 .lower()
             )
 
-            login_resp = await self._receive_response(
-                self.requester.send_request(
-                    self._dispatch_table.get("LoginRequest22V5")(
-                        userId=self.username, signedPassword=signed_password
-                    ).to_xml_async()
-                )
+            request = self._dispatch_table.get("LoginRequest14sp4")(
+                userId=self.username, signedPassword=signed_password
             )
 
-            if isinstance(login_resp, BWKSErrorResponse):
-                raise THError(f"Invalid session parameters: {login_resp.summary}")
+        login_resp = self._receive_response(
+            self.requester.send_request(request.to_xml())
+        )
 
-        except Exception as e:
-            self.logger.error(f"Failed to authenticate: {e}")
-            raise THError(f"Failed to authenticate: {e}")
+        if isinstance(login_resp, BWKSErrorResponse):
+            raise THError(f"Failed to authenticate: {login_resp.summary}")
+
         self.logger.info("Authenticated with server")
         self.authenticated = True
         return login_resp

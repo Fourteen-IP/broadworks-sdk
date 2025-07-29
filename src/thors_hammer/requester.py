@@ -90,7 +90,8 @@ class BaseRequester(ABC):
         )
 
         session_id = etree.Element("sessionId")
-        session_id.text = str(self.session_id)
+        session_id.text = self.session_id
+        session_id.set("xmlns", "")
 
         command = etree.fromstring(command.encode("ISO-8859-1"))
 

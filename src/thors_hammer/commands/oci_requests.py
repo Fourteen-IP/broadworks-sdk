@@ -16311,6 +16311,15 @@ class LoginRequest22V5(OCIRequest):
 
 
 @dataclass
+class LoginRequest14sp4(OCIRequest):
+    userId: str
+
+    password: Optional[str] = None
+
+    signedPassword: Optional[str] = None
+
+
+@dataclass
 class LogoutRequest(OCIRequest):
     """LogoutRequest is sent when an OCI user logs out or when connection is lost.
     This command can be sent either to the server, or to the client from OCS.
