@@ -136,7 +136,6 @@ class SyncTCPRequester(BaseRequester):
             port=port,
             timeout=timeout,
             session_id=session_id,
-            tls=tls,
         )
         self.connect()
 
@@ -358,7 +357,6 @@ class AsyncTCPRequester(BaseRequester):
             port=port,
             timeout=timeout,
             session_id=session_id,
-            tls=tls,
         )
         self.connect()
 
