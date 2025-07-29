@@ -130,6 +130,7 @@ class SyncTCPRequester(BaseRequester):
         tls: bool = True,
     ):
         self.sock = None
+        self.tls = tls
         super().__init__(
             logger=logger,
             host=host,
@@ -351,6 +352,7 @@ class AsyncTCPRequester(BaseRequester):
     ):
         self.reader = None
         self.writer = None
+        self.tls = tls
         super().__init__(
             logger=logger,
             host=host,
