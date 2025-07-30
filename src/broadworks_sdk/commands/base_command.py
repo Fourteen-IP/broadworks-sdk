@@ -1,7 +1,7 @@
 from typing import get_type_hints, Union, Optional
 import xml.etree.ElementTree as ET
 
-from thors_hammer.utils.parser import Parser, AsyncParser
+from broadworks_sdk.utils.parser import Parser, AsyncParser
 
 
 class OCIType:

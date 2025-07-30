@@ -7,13 +7,13 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Union, Tuple
 
-from thors_hammer.exceptions import (
+from broadworks_sdk.exceptions import (
     THErrorSocketInitialisation,
     THErrorSendRequestFailed,
     THErrorSocketTimeout,
     THErrorClientInitialisation,
 )
-from thors_hammer.commands.base_command import OCICommand as BroadworksCommand
+from broadworks_sdk.commands.base_command import OCICommand as BroadworksCommand
 
 from lxml import etree, builder
 from zeep import Client, Settings, Transport

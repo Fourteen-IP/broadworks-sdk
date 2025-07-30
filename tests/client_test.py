@@ -5,7 +5,7 @@ test client
 import pytest
 from unittest.mock import patch
 
-from src.thors_hammer.client import Client
+from src.broadworks_sdk.client import Client
 
 
 @pytest.fixture
