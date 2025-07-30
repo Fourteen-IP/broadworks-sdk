@@ -51,8 +51,6 @@ def test_build_oci_xml_creates_correct_structure():
     result = requester.build_oci_xml(mock_command)
     root = etree.fromstring(result)
 
-    ns = {"ns": "C"}
-
     assert root.tag == "{C}BroadsoftDocument"
 
     session_el = root.find("sessionId")
