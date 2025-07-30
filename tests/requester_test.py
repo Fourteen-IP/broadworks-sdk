@@ -5,19 +5,19 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from thors_hammer.requester import (
+from broadworks_sdk.requester import (
     SyncTCPRequester,
     SyncSOAPRequester,
     AsyncSOAPRequester,
     AsyncTCPRequester,
 )
-from thors_hammer.exceptions import (
+from broadworks_sdk.exceptions import (
     THErrorSocketInitialisation,
     THErrorSocketTimeout,
     THErrorClientInitialisation,
     THErrorSendRequestFailed,
 )
-from thors_hammer.commands import base_command as BroadworksCommand
+from broadworks_sdk.commands import base_command as BroadworksCommand
 
 
 @pytest.fixture
@@ -120,10 +120,10 @@ class TestSyncTCPRequester:
 
 
 class TestSyncSOAPRequester:
-    @patch("thors_hammer.requester.requests.sessions.Session")
-    @patch("thors_hammer.requester.Settings")
-    @patch("thors_hammer.requester.Transport")
-    @patch("thors_hammer.requester.Client")
+    @patch("broadworks_sdk.requester.requests.sessions.Session")
+    @patch("broadworks_sdk.requester.Settings")
+    @patch("broadworks_sdk.requester.Transport")
+    @patch("broadworks_sdk.requester.Client")
     def test_connect_success(
         self, mock_client_class, mock_transport, mock_settings, mock_session
     ):
@@ -137,7 +137,7 @@ class TestSyncSOAPRequester:
         )
 
     @patch(
-        "thors_hammer.requester.requests.sessions.Session",
+        "broadworks_sdk.requester.requests.sessions.Session",
         side_effect=Exception("Session error"),
     )
     def test_connect_fail(self, mock_session):
