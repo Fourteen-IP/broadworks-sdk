@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import Mock, patch, AsyncMock
 import sys
 import os
+from lxml import etree
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -34,6 +35,40 @@ def mock_command():
 </BroadsoftDocument>
 """
     return cmd
+
+
+def test_build_oci_xml_creates_correct_structure():
+    requester = SyncSOAPRequester.__new__(SyncSOAPRequester)
+    requester.client = None
+    requester.session_id = "123214235235235"
+
+    mock_command = Mock()
+    mock_command.encode.return_value = """
+    <command xmlns="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="AuthenticationRequest">
+    <userId>vinny</userId>
+    </command>"""
+
+    result = requester.build_oci_xml(mock_command)
+    root = etree.fromstring(result)
+
+    ns = {"ns": "C"}
+
+    assert root.tag == "{C}BroadsoftDocument"
+
+    session_el = root.find("sessionId")
+    assert session_el is not None
+    assert session_el.text == "123214235235235"
+
+    command_el = root.find("command")
+    assert command_el is not None
+    assert (
+        command_el.attrib.get("{http://www.w3.org/2001/XMLSchema-instance}type")
+        == "AuthenticationRequest"
+    )
+
+    user_id_el = command_el.find("userId")
+    assert user_id_el is not None
+    assert user_id_el.text == "vinny"
 
 
 class TestSyncTCPRequester:
