@@ -37,9 +37,10 @@ def mock_command():
     return cmd
 
 
-def test_build_oci_xml_creates_correct_structure():
+def test_build_oci_xml_creates_correct_structure(mock_logger):
     requester = SyncSOAPRequester.__new__(SyncSOAPRequester)
     requester.client = None
+    requester.logger = mock_logger
     requester.session_id = "123214235235235"
 
     mock_command = Mock()
@@ -217,25 +218,22 @@ class TestSyncSOAPRequester:
         mock_logger.warning.assert_called_once()
         assert requester.client is None
 
-    @patch.object(SyncSOAPRequester, "build_oci_xml", return_value="<xml>request</xml>")
+    @patch.object(SyncSOAPRequester, "build_oci_xml")
     def test_send_request_success(self, mock_build_xml):
         mock_logger = Mock()
-        mock_zclient = Mock()
-        mock_service = Mock()
-        mock_service.processOCIMessage.return_value = "response"
-        mock_zclient.service = mock_service
-
         requester = SyncSOAPRequester.__new__(SyncSOAPRequester)
         requester.logger = mock_logger
-        requester.zclient = mock_zclient
+        requester.zclient = Mock()
+        requester.zclient.service.processOCIMessage = Mock(
+            return_value="<xml>response</xml>"
+        )
 
         mock_command = Mock(spec=BroadworksCommand)
 
-        response = requester.send_request(mock_command)
+        result = requester.send_request(mock_command)
 
+        assert result == "<xml>response</xml>"
         mock_build_xml.assert_called_once_with(mock_command)
-        mock_service.processOCIMessage.assert_called_once()
-        assert response == "response"
 
     @patch.object(
         SyncSOAPRequester, "build_oci_xml", side_effect=Exception("build failed")

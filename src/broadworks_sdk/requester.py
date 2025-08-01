@@ -27,11 +27,11 @@ class BaseRequester(ABC):
     """Base class for all requesters.
 
     Args:
-        logger (logging.Logger): The logger of the requester.
-        host (str): The host of the server.
-        port (int): The port of the server.
-        timeout (int): The timeout of the requester.
-        session_id (str): The session id of the requester.
+        logger (logging.Logger): The logger instance for logging messages.
+        host (str): The hostname or IP address of the server.
+        port (int): The port number to connect to on the server.
+        timeout (int): The timeout duration (in seconds) for operations.
+        session_id (str): The session ID used for the connection.
     """
 
     def __init__(
@@ -56,6 +56,10 @@ class BaseRequester(ABC):
 
         Args:
             command (BroadworksCommand): The command to send to the server.
+
+        Returns:
+            Union[str, Tuple[Exception, Exception]]: The server's response as a string,
+            or a tuple containing exceptions if an error occurs.
         """
         pass
 
@@ -81,6 +85,10 @@ class BaseRequester(ABC):
         Returns:
             bytes: The serialized XML document as bytes, encoded with ISO-8859-1.
         """
+
+        self.logger.debug(
+            f"Building OCI XML for command: {command} with session ID: {self.session_id}"
+        )
 
         ElementMaker = builder.ElementMaker(
             namespace="C",
@@ -109,15 +117,16 @@ class SyncTCPRequester(BaseRequester):
     """A synchronous TCP requester for BroadWorks OCI-P.
 
     This class manages a synchronous connection to a BroadWorks Application
-    Server. It will open a TCP Socket connection, using 2209 for an SSL wrapped
-    socket for encrypted traffic.
+    Server. It opens a TCP socket connection, optionally wrapped with SSL for
+    encrypted traffic, and sends OCI-P commands over the connection.
 
     Args:
         logger (logging.Logger): An instance of `logging.Logger` for logging messages.
         host (str): The hostname or IP address of the BroadWorks server.
         port (int): The port for the OCI-P interface, defaults to 2209.
-        timeout (int): The timeout for HTTP requests in seconds, defaults to 10.
+        timeout (int): The timeout for socket operations in seconds, defaults to 30.
         session_id (str): The session ID for an established OCI-P session.
+        tls (bool): Whether to use TLS for the connection, defaults to True.
     """
 
     def __init__(
@@ -142,10 +151,13 @@ class SyncTCPRequester(BaseRequester):
 
     def connect(self):
         """
-        Opens a TCP Socket connection to the Server
+        Opens a TCP socket connection to the server.
+
+        If TLS is enabled, the socket is wrapped with SSL for encrypted communication.
 
         Returns:
-            THErrorSocketInitialisation if the Socket fails to open
+            Union[None, Tuple[Exception, Exception]]: None if the connection is successful,
+            or a tuple containing exceptions if an error occurs.
         """
         if self.sock is None:
             try:
@@ -170,7 +182,11 @@ class SyncTCPRequester(BaseRequester):
                 )
 
     def disconnect(self):
-        """Disconnects from the server."""
+        """Disconnects from the server.
+
+        Closes the TCP socket connection if it is open. Logs a warning if an
+        exception occurs during the disconnection process.
+        """
         if self.sock:
             try:
                 self.sock.close()
@@ -187,11 +203,15 @@ class SyncTCPRequester(BaseRequester):
     ) -> Union[str, Tuple[Exception, Exception]]:
         """Sends a request to the server.
 
+        Encodes the given command into an OCI XML document and sends it over
+        the TCP connection. Waits for and returns the server's response.
+
         Args:
             command (BroadworksCommand): The command to send to the server.
 
         Returns:
-            Any: The response from the server.
+            Union[str, Tuple[Exception, Exception]]: The server's response as a string,
+            or a tuple containing exceptions if an error occurs.
         """
         try:
             if self.sock is None and isinstance(
@@ -200,6 +220,10 @@ class SyncTCPRequester(BaseRequester):
                 return connection
 
             command_bytes = self.build_oci_xml(command)
+
+            self.logger.debug(
+                f"Sending command over {self.__class__.__name__}: {command_bytes.decode('ISO-8859-1')}"
+            )
 
             self.sock.sendall(command_bytes + b"\n")
 
@@ -222,8 +246,8 @@ class SyncTCPRequester(BaseRequester):
         except Exception as e:
             return (THErrorSendRequestFailed, e)
 
-    # def __del__(self):
-    #     self.disconnect()
+    def __del__(self):
+        self.disconnect()
 
 
 class SyncSOAPRequester(BaseRequester):
@@ -249,7 +273,6 @@ class SyncSOAPRequester(BaseRequester):
         timeout: int = 10,
         session_id: str = None,
     ):
-        self.client = None
         self.zclient = None
         super().__init__(
             logger=logger,
@@ -267,7 +290,7 @@ class SyncSOAPRequester(BaseRequester):
         Returns:
             THErrorClientInitialisation if the client fails to open.
         """
-        if self.client is None:
+        if self.zclient is None:
             try:
                 self.client = requests.sessions.Session()
                 settings = Settings(strict=False, xml_huge_tree=True)
@@ -285,8 +308,12 @@ class SyncSOAPRequester(BaseRequester):
                 return (THErrorClientInitialisation, e)
 
     def disconnect(self):
-        """Disconnects from the server."""
-        if self.client:
+        """Disconnects from the server.
+
+        Closes the HTTP client connection if it is open. Logs a warning if an
+        exception occurs during the disconnection process.
+        """
+        if self.zclient:
             try:
                 self.client.close()
             except Exception as e:
@@ -295,23 +322,32 @@ class SyncSOAPRequester(BaseRequester):
                 )
                 pass
             finally:
-                self.client = None
+                self.zclient = None
 
     def send_request(
         self, command: BroadworksCommand
     ) -> Union[str, Tuple[Exception, Exception]]:
         """Sends a request to the server.
 
+        Encodes the given command into an OCI XML document, wraps it in a SOAP
+        envelope, and sends it to the server. Waits for and returns the server's
+        response.
+
         Args:
             command (BroadworksCommand): The command to send to the server.
 
         Returns:
-            Any: The response from the server.
+            Union[str, Tuple[Exception, Exception]]: The server's response as a string,
+            or a tuple containing exceptions if an error occurs.
         """
         try:
-            response = self.zclient.service.processOCIMessage(
-                self.build_oci_xml(command)
+            command = self.build_oci_xml(command)
+
+            self.logger.debug(
+                f"Sending command over {self.__class__.__name__}: {command.decode('ISO-8859-1')}"
             )
+
+            response = self.zclient.service.processOCIMessage(command)
 
             return response
         except Exception as e:
@@ -320,8 +356,8 @@ class SyncSOAPRequester(BaseRequester):
             )
             return (THErrorSendRequestFailed, e)
 
-    # def __del__(self):
-    #     self.disconnect()
+    def __del__(self):
+        self.disconnect()
 
 
 class AsyncTCPRequester(BaseRequester):
@@ -361,7 +397,16 @@ class AsyncTCPRequester(BaseRequester):
         self.connect()
 
     async def connect(self):
-        """Connects to the server."""
+        """Connects to the server.
+
+        Initializes the asynchronous HTTP client and SOAP client for sending
+        OCI commands. Fetches the WSDL file and prepares the SOAP client for
+        communication.
+
+        Returns:
+            Union[None, Tuple[Exception, Exception]]: None if the connection is successful,
+            or a tuple containing exceptions if an error occurs.
+        """
         if self.reader is None and self.writer is None:
             try:
                 if self.tls:
@@ -387,7 +432,11 @@ class AsyncTCPRequester(BaseRequester):
                 return (THErrorSocketInitialisation, e)
 
     async def disconnect(self):
-        """Disconnects from the server."""
+        """Disconnects from the server.
+
+        Closes the asynchronous HTTP client if it is open. Logs a warning if an
+        exception occurs during the disconnection process.
+        """
         if self.reader and self.writer:
             try:
                 self.writer.close()
@@ -406,11 +455,15 @@ class AsyncTCPRequester(BaseRequester):
     ) -> Union[str, Tuple[Exception, Exception]]:
         """Sends a request to the server.
 
+        Encodes the given command into an OCI XML document and sends it over
+        the TCP connection. Waits for and returns the server's response.
+
         Args:
             command (BroadworksCommand): The command to send to the server.
 
         Returns:
-            Any: The response from the server.
+            Union[str, Tuple[Exception, Exception]]: The server's response as a string,
+            or a tuple containing exceptions if an error occurs.
         """
         try:
             if self.reader or self.writer is None:
@@ -420,7 +473,12 @@ class AsyncTCPRequester(BaseRequester):
 
             command = await command
 
-            command_bytes = self.build_oci_xml(command)
+            command_bytes = await self.build_oci_xml(command)
+
+            self.logger.debug(
+                f"Sending command over {self.__class__.__name__}: {command_bytes.decode('ISO-8859-1')}"
+            )
+
             self.writer.write(command_bytes + b"\0")
             await self.writer.drain()
 
@@ -450,6 +508,24 @@ class AsyncTCPRequester(BaseRequester):
             )
             return (THErrorSendRequestFailed, e)
 
+    async def build_oci_xml(self, command: BroadworksCommand) -> bytes:
+        """Builds an OCI XML request from the given BroadworksCommand asynchronously.
+
+        Uses a thread pool executor to offload the XML building process to a
+        separate thread, ensuring non-blocking behavior.
+
+        Args:
+            command (BroadworksCommand): The command to be encoded into the XML.
+
+        Returns:
+            bytes: The serialized XML document as bytes, encoded with ISO-8859-1.
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, super().build_oci_xml, command)
+
+    def __del__(self):
+        self.disconnect()
+
 
 class AsyncSOAPRequester(BaseRequester):
     """An asynchronous SOAP requester for BroadWorks OCI-P.
@@ -463,6 +539,7 @@ class AsyncSOAPRequester(BaseRequester):
         host (str): The hostname or IP address of the BroadWorks server.
         port (int): The port for the OCI-P interface, defaults to 2209.
         timeout (int): The timeout for HTTP requests in seconds, defaults to 10.
+        session_id (str): The session ID for an established OCI-P session.
     """
 
     def __init__(
@@ -486,7 +563,16 @@ class AsyncSOAPRequester(BaseRequester):
         self.connect()
 
     async def connect(self):
-        """Connects to the server."""
+        """Connects to the server.
+
+        Initializes the asynchronous HTTP client and SOAP client for sending
+        OCI commands. Fetches the WSDL file and prepares the SOAP client for
+        communication.
+
+        Returns:
+            Union[None, Tuple[Exception, Exception]]: None if the connection is successful,
+            or a tuple containing exceptions if an error occurs.
+        """
         if None not in (self.async_client, self.wsdl_client, self.zeep_client):
             pass
         try:
@@ -512,7 +598,11 @@ class AsyncSOAPRequester(BaseRequester):
             return (THErrorClientInitialisation, e)
 
     async def disconnect(self):
-        """Disconnects from the server."""
+        """Disconnects from the server.
+
+        Closes the asynchronous HTTP client if it is open. Logs a warning if an
+        exception occurs during the disconnection process.
+        """
         if self.client:
             try:
                 self.client.close()
@@ -529,11 +619,16 @@ class AsyncSOAPRequester(BaseRequester):
     ) -> Union[str, Tuple[Exception, Exception]]:
         """Sends a request to the server.
 
+        Encodes the given command into an OCI XML document, wraps it in a SOAP
+        envelope, and sends it to the server. Waits for and returns the server's
+        response.
+
         Args:
             command (BroadworksCommand): The command to send to the server.
 
         Returns:
-            Any: The response from the server.
+            Union[str, Tuple[Exception, Exception]]: The server's response as a string,
+            or a tuple containing exceptions if an error occurs.
         """
         if None in (self.async_client, self.wsdl_client, self.zeep_client):
             connection = await self.connect()
@@ -543,9 +638,13 @@ class AsyncSOAPRequester(BaseRequester):
         command = await command
 
         try:
-            response = await self.zeep_client.service.processOCIMessage(
-                self.build_oci_xml(command)
+            command = await self.build_oci_xml(command)
+
+            self.logger.debug(
+                f"Sending command over {self.__class__.__name__}: {command.decode('ISO-8859-1')}"
             )
+
+            response = await self.zeep_client.service.processOCIMessage(command)
 
             return response
         except Exception as e:
@@ -553,6 +652,24 @@ class AsyncSOAPRequester(BaseRequester):
                 f"Failed to send command over {self.__class__.__name__}: {e}"
             )
             return (THErrorSendRequestFailed, e)
+
+    async def build_oci_xml(self, command: BroadworksCommand) -> bytes:
+        """Builds an OCI XML request from the given BroadworksCommand asynchronously.
+
+        Uses a thread pool executor to offload the XML building process to a
+        separate thread, ensuring non-blocking behavior.
+
+        Args:
+            command (BroadworksCommand): The command to be encoded into the XML.
+
+        Returns:
+            bytes: The serialized XML document as bytes, encoded with ISO-8859-1.
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, super().build_oci_xml, command)
+
+    def __del__(self):
+        self.disconnect()
 
 
 def create_requester(
@@ -567,17 +684,21 @@ def create_requester(
 ) -> BaseRequester:
     """Factory function to create a requester.
 
+    Creates and returns an instance of a requester class based on the specified
+    connection type and whether asynchronous behavior is required.
+
     Args:
-        logger (logging.Logger): The logger to use.
-        session_id (str): The session ID to use.
-        host (str): The host to connect to.
-        port (int): The port to connect to.
-        conn_type (str): The connection type to use.
+        logger (logging.Logger): The logger to use for the requester.
+        session_id (str): The session ID to use for the connection.
+        host (str): The hostname or IP address of the server.
+        port (int): The port number to connect to on the server.
+        conn_type (str): The connection type to use ("SOAP" or "TCP").
         async_ (bool): Whether to use an asynchronous requester.
-        timeout (int): The timeout to use.
+        timeout (int): The timeout duration (in seconds) for operations.
+        tls (bool): Whether to use TLS for the connection (only applicable for TCP).
 
     Returns:
-        BaseRequester: The created requester.
+        BaseRequester: An instance of the appropriate requester class.
     """
     if conn_type == "SOAP":
         if async_:
