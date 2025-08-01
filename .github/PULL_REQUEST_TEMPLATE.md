@@ -6,7 +6,7 @@
 - [ ] Update documentation as necessary.
 - [ ] Verify that all tests pass.
 
-### Description of Proposed Changes
+### PR Description 
 
 ## Reviewer Only
 
