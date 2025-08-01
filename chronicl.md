@@ -1,4 +1,5 @@
-# [chronicl](https://github.com/minimal-mind/chronicl)
+
+[chronicl](https://github.com/minimal-mind/chronicl)
 
 ## CODEBASE OVERVIEW
 - Thor's Hammer is a Python library for interacting with BroadWorks servers.
@@ -50,6 +51,35 @@
 ## NOTES
 
 ## JOURNAL
+
+@malkin0xb8 29.07.25
+- Login issue was resolved as poor documentation from Cisco's end, in the new release LoginRequest22V5 does not require a signed password as it relies on the encrypted socket for TCP or TLS/SSL for HTTPS SOAP.
+- We now let the user choose, and if it they want a raw unencrypted connection, we sign the password and revert to LoginRequest14sp4 to login.
+
+@Jordan-Prescott 28.07.25
+- Issue is definatley with the signedPassword however currently no idea what causes this
+- Signing in with just the login request works fine 
+- Hashing is the same in both Nigels and ours tested and there is no issue there 
+- Issue found when we authenticate is there is a logout request sent from the ADP but Nigels does not 
+
+@malkin0xb8 25.07.2025
+- Discovered that the password signing is incorrect, after testing with raw password the login succeeded.
+- Online suggestions say that since the socket and connection is SSL encrypted the OCI backend expects a different charset or format for the signed password.
+
+@KiPageFault 22.07.2025
+- Added Parser class designed for Type/Request/Response type translation between class objects, xml, and dictionaries.
+- Added OCI base classes to encapsulate Type/Request/Response objects and provide parser utility.
+- Finalised Client _receive_response in accordance with Requester object. It is designed to take a raw string on a successful response or \
+  a tuple object containing an exception object and message.
+- All above implementations require documentaiton.
+
+@Jordan-Prescott 22.07.2025
+- Added absolute import statements as this is a python package its best practuice 
+- Imports should follow order: standard packages, internal packages, external packages at the bottom
+
+@Jordan-Prescott 15.07.2025
+- Added tests for the client class found in tests/client_tests.py
+- Adjusted the _receive_response in client which will use the response object from requester to capture class to return
 
 @Jordan-Prescott 14.07.2025
 - Client class now first draft with most of the functionality in place, yet some things still need flushing out.
